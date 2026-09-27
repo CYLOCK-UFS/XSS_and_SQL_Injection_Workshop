@@ -1,0 +1,52 @@
+name: lab-palestra-seguranca
+
+services:
+  db:
+    image: mysql:8.0.46-bookworm
+    container_name: lab-palestra-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-lab_root_password}
+      MYSQL_DATABASE: ${DB_NAME:-lab_palestra}
+      MYSQL_USER: ${DB_USER:-lab_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-lab_password}
+    # T09: publicado apenas na interface de loopback, nunca em 0.0.0.0.
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/00-grants.sql:/docker-entrypoint-initdb.d/00-grants.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: lab-palestra-app
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-lab_user}
+      DB_PASSWORD: ${DB_PASSWORD:-lab_password}
+      DB_NAME: ${DB_NAME:-lab_palestra}
+    # T09: idem para a aplicacao.
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+    name: lab-palestra-db-data

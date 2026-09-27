@@ -1,0 +1,25 @@
+{
+  "name": "xss-and-sql-injection-workshop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Laboratorio didatico FinBank & ChefLab - SQL Injection e XSS para palestras e workshops",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "mysql2": "^3.24.4"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cenario 1 - Agencias | FinBank</title>
+    <link rel="stylesheet" href="/css/lab.css" />
+  </head>
+  <body>
+    <header class="topo">
+      <div class="topo__interno">
+        <a class="topo__marca" href="/">
+          <strong>FinBank</strong>
+          <span>Cenario 1 - SQLi UNION</span>
+        </a>
+        <div class="topo__acoes">
+          <div data-lab-modo></div>
+          <button type="button" class="botao botao--perigo" data-lab-reset>
+            Restaurar laboratorio
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1 class="titulo-secao">Consulta de agencias por cidade</h1>
+      <p class="subtitulo-secao">
+        A consulta publica de agencias devolve quatro colunas:
+        <code>nome_agencia</code>, <code>endereco</code>, <code>telefone</code> e
+        <code>gerente</code>. Essa contagem e a assinatura do cenario.
+      </p>
+
+      <div class="roteiro">
+        <div class="roteiro__titulo">Roteiro do cenario</div>
+        <p>
+          1. No modo <strong>Vulneravel</strong>, consulte uma cidade real e veja a
+          tabela de agencias.<br />
+          2. Aplique o payload abaixo: o resultado passa a trazer linhas de
+          <code>cartoes_credito</code> (titular, numero, cvv, validade) numa
+          consulta que deveria mostrar apenas agencias.<br />
+          3. Alterne para <strong>Seguro</strong> e repita: o payload inteiro passa
+          a ser tratado como nome de cidade e volta zero linhas.
+        </p>
+        <code class="payload" data-exemplo data-alvo="#campo-cidade">' UNION SELECT titular, numero_cartao, cvv, validade FROM cartoes_credito -- </code>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Consulta</div>
+        <form class="linha-form" id="formulario">
+          <div>
+            <label class="rotulo" for="campo-cidade">Cidade</label>
+            <input
+              class="campo"
+              id="campo-cidade"
+              name="cidade"
+              list="lista-cidades"
+              placeholder="Sao Paulo"
+              autocomplete="off"
+            />
+            <datalist id="lista-cidades"></datalist>
+          </div>
+          <button type="submit" class="botao botao--primario">Consultar</button>
+          <button type="button" class="botao" id="limpar">Limpar filtro</button>
+        </form>
+        <p class="suave" id="resumo" style="margin: 0; font-size: 0.86rem"></p>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Resultado</div>
+        <div class="tabela-rolagem">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Agencia</th>
+                <th>Endereco</th>
+                <th>Telefone</th>
+                <th>Gerente</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-tabela"></tbody>
+          </table>
+        </div>
+        <p class="vazio oculto" id="tabela-vazia">
+          Nenhuma agencia encontrada.
+        </p>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Resposta bruta da API</div>
+        <pre class="json oculto" id="json-resposta"></pre>
+      </div>
+
+      <footer class="rodape">
+        <a href="/banco/extrato.html">Cenario 2 - Extrato &rarr;</a>
+      </footer>
+    </main>
+
+    <script type="module">
+      import {
+        iniciarLaboratorio,
+        mostrarJson,
+        preencherTexto,
+      } from '/js/lab.js';
+
+      await iniciarLaboratorio();
+
+      const formulario = document.querySelector('#formulario');
+      const campo = document.querySelector('#campo-cidade');
+      const corpo = document.querySelector('#corpo-tabela');
+      const vazio = document.querySelector('#tabela-vazia');
+      const resumo = document.querySelector('#resumo');
+      const json = document.querySelector('#json-resposta');
+      const datalist = document.querySelector('#lista-cidades');
+
+      document
+        .querySelector('#limpar')
+        .addEventListener('click', () => consultar(''));
+
+      formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        consultar(campo.value);
+      });
+
+      /**
+       * A resposta da API e desenhada com textContent, nunca por innerHTML:
+       * um cenario de SQLi nao deve virar um ponto de injecao de XSS no
+       * painel de debug da propria ferramenta.
+       */
+      async function consultar(cidade) {
+        const parametros = new URLSearchParams();
+        if (cidade !== '') {
+          parametros.set('cidade', cidade);
+        }
+
+        const resposta = await fetch(`/banco/agencias?${parametros.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
+        const dados = await resposta.json();
+
+        desenhar(dados);
+        mostrarJson(json, dados);
+      }
+
+      function desenhar(dados) {
+        const linhas = dados.agencias ?? [];
+        const fragmento = document.createDocumentFragment();
+
+        for (const agencia of linhas) {
+          const tr = document.createElement('tr');
+          for (const valor of [
+            agencia.nome_agencia,
+            agencia.endereco,
+            agencia.telefone,
+            agencia.gerente,
+          ]) {
+            const td = document.createElement('td');
+            td.textContent = valor ?? '';
+            tr.append(td);
+          }
+          fragmento.append(tr);
+        }
+
+        corpo.replaceChildren(fragmento);
+        vazio.classList.toggle('oculto', linhas.length > 0);
+
+        preencherTexto(
+          resumo,
+          `${linhas.length} registro(s) para o filtro "${dados.filtro?.cidade ?? '(todas)'}".`,
+        );
+
+        if (dados.cidades?.length && datalist.childElementCount === 0) {
+          for (const cidade of dados.cidades) {
+            const opcao = document.createElement('option');
+            opcao.value = cidade;
+            datalist.append(opcao);
+          }
+        }
+      }
+
+      consultar('');
+    </script>
+  </body>
+</html>

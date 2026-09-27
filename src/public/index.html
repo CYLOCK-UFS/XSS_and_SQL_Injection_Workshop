@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinBank &amp; ChefLab - laboratorio de seguranca</title>
+    <link rel="stylesheet" href="/css/lab.css" />
+  </head>
+  <body>
+    <header class="topo">
+      <div class="topo__interno">
+        <a class="topo__marca" href="/">
+          <strong>FinBank &amp; ChefLab</strong>
+          <span>SQL Injection e XSS</span>
+        </a>
+        <div class="topo__acoes">
+          <div data-lab-modo></div>
+          <button type="button" class="botao botao--perigo" data-lab-reset>
+            Restaurar laboratorio
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1 class="titulo-secao">Laboratorio de demonstracao</h1>
+      <p class="subtitulo-secao">
+        Quatro cenarios de ataque web sobre dados sinteticos. O modo
+        <strong>vulneravel</strong> expoe a falha; o modo <strong>seguro</strong>
+        aplica a mitigacao correspondente. Alterne o modo na barra acima e
+        repita o mesmo passo para ver a diferenca.
+      </p>
+
+      <div class="aviso">
+        <span aria-hidden="true">&#9888;</span>
+        <div>
+          <strong>Ambiente academico isolado</strong>
+          Todos os dados sao ficticios. Nao ha cartao, CPF, telefone ou credencial
+          real neste laboratorio. Nao publique este servico fora da rede de
+          treinamento.
+        </div>
+      </div>
+
+      <div class="grade">
+        <section class="cartao">
+          <h3>FinBank</h3>
+          <p>
+            Tres cenarios de SQL Injection contra o backend MySQL, com a versao
+            mitigada por prepared statement.
+          </p>
+          <ul class="lista-cenarios">
+            <li><code>UNION</code> com quatro colunas</li>
+            <li>SQLi baseada em erro com <code>EXTRACTVALUE</code></li>
+            <li>SQLi inferencial (cega) por oracao booleana</li>
+          </ul>
+          <div class="cartao__rodape">
+            <a class="botao botao--primario botao--bloco" href="/banco/agencias.html">
+              Cenario 1 - Agencias
+            </a>
+          </div>
+        </section>
+
+        <section class="cartao">
+          <h3>ChefLab</h3>
+          <p>
+            Comentarios de receitas gravados no banco e renderizados no
+            navegador. O INSERT e parametrizado nos dois modos: a falha esta na
+            saida, nao na entrada.
+          </p>
+          <ul class="lista-cenarios">
+            <li><code>innerHTML</code> executa a marcacao do comentario</li>
+            <li><code>textContent</code> exibe o mesmo texto como texto</li>
+          </ul>
+          <div class="cartao__rodape">
+            <a class="botao botao--primario botao--bloco" href="/receitas/receitas.html">
+              Cenario 4 - Comentarios
+            </a>
+          </div>
+        </section>
+      </div>
+
+      <div class="painel" style="margin-top: 22px">
+        <div class="painel__titulo">Roteiro sugerido</div>
+        <ol class="lista-cenarios">
+          <li>Confirme que o modo esta em <strong>Vulneravel</strong> (acento vermelho).</li>
+          <li>No cenario 1, use o payload UNION e leia a tabela de resultado.</li>
+          <li>No cenario 2, use o payload de erro e veja a senha na mensagem.</li>
+          <li>No cenario 3, compare a noticia com a resposta 404.</li>
+          <li>No cenario 4, grave um comentario com HTML e recarregue a pagina.</li>
+          <li>Alterne para <strong>Seguro</strong> e repita os quatro passos.</li>
+          <li>Restaure o laboratorio para o estado inicial antes da proxima turma.</li>
+        </ol>
+      </div>
+
+      <footer class="rodape">
+        <span class="pill">MySQL 8.0</span>
+        <span class="pill">Node.js + Express + mysql2</span>
+        <span class="pill" id="status-banco">verificando banco...</span>
+        <p>
+          Reset oficial do laboratorio: <code>POST /api/reset</code>. Estado do
+          modo: <code>POST /api/mode</code> com <code>lab_mode=vuln|safe</code>.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module">
+      import { iniciarLaboratorio } from '/js/lab.js';
+
+      await iniciarLaboratorio();
+
+      try {
+        const resposta = await fetch('/api/health', {
+          headers: { Accept: 'application/json' },
+        });
+        const dados = await resposta.json();
+        document.querySelector('#status-banco').textContent =
+          `banco ${dados.banco} - ${dados.tabelas} tabelas`;
+      } catch {
+        document.querySelector('#status-banco').textContent =
+          'banco indisponivel';
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,634 @@
+/* =============================================================================
+   Lab FinBank & ChefLab - folha de estilo unica (DAS v2.2, secao 2)
+   =============================================================================
+   CSS proprio, sem CDN e sem build step: o laboratorio roda em rede isolada
+   e precisa funcionar sem internet no projetor da sala.
+
+   O modo do laboratorio (cookie lab_mode) escolhe a cor de destaque em
+   html[data-modo], de modo que o estado fique visivel a distancia durante a
+   apresentacao: vermelho = vulneravel, verde = mitigado.
+   ============================================================================= */
+
+:root {
+  --fonte: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+
+  --fundo: #0b1220;
+  --fundo-alt: #111c30;
+  --superficie: #16233a;
+  --superficie-2: #1d2d49;
+  --borda: #2b3d5e;
+  --borda-forte: #3d5480;
+  --texto: #e6edf7;
+  --texto-suave: #9db0cc;
+  --marca: #38bdf8;
+
+  --vuln: #f87171;
+  --vuln-fundo: rgba(248, 113, 113, 0.12);
+  --vuln-borda: rgba(248, 113, 113, 0.45);
+
+  --safe: #4ade80;
+  --safe-fundo: rgba(74, 222, 128, 0.12);
+  --safe-borda: rgba(74, 222, 128, 0.45);
+
+  --acento: var(--vuln);
+  --acento-fundo: var(--vuln-fundo);
+  --acento-borda: var(--vuln-borda);
+  --raio: 10px;
+  --sombra: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+html[data-modo="vuln"] {
+  --acento: var(--vuln);
+  --acento-fundo: var(--vuln-fundo);
+  --acento-borda: var(--vuln-borda);
+}
+
+html[data-modo="safe"] {
+  --acento: var(--safe);
+  --acento-fundo: var(--safe-fundo);
+  --acento-borda: var(--safe-borda);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  background: var(--fundo);
+  color: var(--texto);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--marca);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estrutura                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px 56px;
+}
+
+.topo {
+  border-bottom: 1px solid var(--borda);
+  background: linear-gradient(180deg, var(--fundo-alt), var(--fundo));
+  margin-bottom: 28px;
+}
+
+.topo__interno {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topo__marca {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--texto);
+}
+
+.topo__marca strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.2px;
+}
+
+.topo__marca span {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.topo__acoes {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.titulo-secao {
+  font-size: 1.45rem;
+  margin: 0 0 6px;
+}
+
+.subtitulo-secao {
+  color: var(--texto-suave);
+  margin: 0 0 22px;
+}
+
+.rodape {
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borda);
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Grade e cartoes                                                            */
+/* -------------------------------------------------------------------------- */
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-top: 3px solid var(--acento);
+  border-radius: var(--raio);
+  padding: 20px;
+  box-shadow: var(--sombra);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cartao h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.cartao p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.cartao__rodape {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.lista-cenarios {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: var(--texto-suave);
+}
+
+.lista-cenarios li::before {
+  content: "\25B8";
+  color: var(--acento);
+  margin-right: 8px;
+}
+
+.lista-cenarios code {
+  color: var(--texto);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Botoes                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 1px solid var(--borda-forte);
+  background: var(--superficie-2);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.88rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+.botao:hover {
+  background: #26395a;
+  border-color: var(--acento-borda);
+}
+
+.botao:active {
+  transform: translateY(1px);
+}
+
+.botao:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.botao--primario {
+  background: var(--acento-fundo);
+  border-color: var(--acento-borda);
+  color: var(--acento);
+  font-weight: 600;
+}
+
+.botao--perigo {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: var(--vuln);
+}
+
+.botao--bloco {
+  width: 100%;
+  justify-content: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Controle de modo (DAS, secao 3)                                            */
+/* -------------------------------------------------------------------------- */
+
+.modo-controle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: var(--fundo-alt);
+}
+
+.modo-controle__rotulo {
+  padding-left: 10px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--texto-suave);
+}
+
+.modo-opcao {
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modo-opcao:hover {
+  color: var(--texto);
+}
+
+.modo-opcao[aria-pressed="true"] {
+  background: var(--acento-fundo);
+  border-color: var(--acento-borda);
+  color: var(--acento);
+}
+
+.modo-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: var(--acento-fundo);
+  border: 1px solid var(--acento-borda);
+  color: var(--acento);
+}
+
+.modo-selo::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acento);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Avisos e hints de roteiro                                                  */
+/* -------------------------------------------------------------------------- */
+
+.aviso {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--acento-borda);
+  background: var(--acento-fundo);
+  font-size: 0.88rem;
+  margin-bottom: 24px;
+}
+
+.aviso strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.aviso--neutro {
+  border-color: var(--borda);
+  background: var(--fundo-alt);
+}
+
+.painel {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.painel__titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--texto-suave);
+  margin-bottom: 12px;
+}
+
+/* Roteiro do cenario: o payload pronto, URL-encoded, para colar no campo. */
+.roteiro {
+  border-left: 3px solid var(--marca);
+  background: var(--fundo-alt);
+  border-radius: 0 var(--raio) var(--raio) 0;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.roteiro__titulo {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--marca);
+  margin-bottom: 8px;
+}
+
+.roteiro p {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  color: var(--texto-suave);
+}
+
+.roteiro .botao {
+  margin-top: 10px;
+}
+
+.payload {
+  display: block;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: #c7f0ff;
+  background: #0a1526;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Formularios                                                                */
+/* -------------------------------------------------------------------------- */
+
+.linha-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.rotulo {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+  margin-bottom: 5px;
+}
+
+.campo {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--texto);
+  background: var(--fundo-alt);
+  border: 1px solid var(--borda-forte);
+  border-radius: 8px;
+  padding: 9px 12px;
+  min-width: 240px;
+}
+
+.campo:focus {
+  outline: 2px solid var(--acento-borda);
+  outline-offset: 1px;
+  border-color: var(--acento);
+}
+
+textarea.campo {
+  min-width: 100%;
+  min-height: 84px;
+  resize: vertical;
+}
+
+.campo-largo {
+  flex: 1;
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tabelas e resultados                                                       */
+/* -------------------------------------------------------------------------- */
+
+.tabela-rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+table.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+
+table.tabela th,
+table.tabela td {
+  padding: 9px 13px;
+  text-align: left;
+  border-bottom: 1px solid var(--borda);
+  white-space: nowrap;
+}
+
+table.tabela th {
+  background: var(--superficie-2);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--texto-suave);
+}
+
+table.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.tabela tbody tr:hover td {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.vazio {
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+  font-style: italic;
+  padding: 14px 2px;
+}
+
+/* JSON bruto: onde o aluno enxerga o vazamento do UNION e do XPATH error. */
+pre.json {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.79rem;
+  line-height: 1.5;
+  color: #b8e6c9;
+  background: #08111f;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 14px;
+  max-height: 340px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+pre.json .chave {
+  color: #7dd3fc;
+}
+
+.resposta-erro {
+  border: 1px solid var(--vuln-borda);
+  background: var(--vuln-fundo);
+  border-radius: var(--raio);
+  padding: 15px 17px;
+}
+
+.resposta-erro h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--vuln);
+}
+
+.resposta-erro p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.destaque-vazamento {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  color: var(--vuln);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* ChefLab - lista de comentarios                                             */
+/* -------------------------------------------------------------------------- */
+
+.comentarios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comentario {
+  background: var(--fundo-alt);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--acento);
+  border-radius: 0 var(--raio) var(--raio) 0;
+  padding: 12px 16px;
+}
+
+.comentario__autor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
+.comentario__autor strong {
+  font-size: 0.95rem;
+}
+
+.comentario__autor time {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  font-family: var(--mono);
+}
+
+.comentario__texto {
+  margin: 0;
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Utilitarios                                                                */
+/* -------------------------------------------------------------------------- */
+
+.pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: var(--mono);
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  color: var(--texto-suave);
+}
+
+.oculto {
+  display: none !important;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.suave {
+  color: var(--texto-suave);
+}
+
+@media (max-width: 620px) {
+  .topo__interno {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .campo {
+    min-width: 0;
+    width: 100%;
+  }
+}

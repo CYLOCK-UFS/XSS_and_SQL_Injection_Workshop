@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChefLab - comentarios de receitas</title>
+    <link rel="stylesheet" href="/css/lab.css" />
+  </head>
+  <body>
+    <header class="topo">
+      <div class="topo__interno">
+        <a class="topo__marca" href="/">
+          <strong>ChefLab</strong>
+          <span>Cenario 4 - XSS armazenado</span>
+        </a>
+        <div class="topo__acoes">
+          <div data-lab-modo></div>
+          <button type="button" class="botao botao--perigo" data-lab-reset>
+            Restaurar laboratorio
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1 class="titulo-secao">Cadastro de receitas</h1>
+      <p class="subtitulo-secao">
+        Os comentarios vao para a tabela <code>comentarios_receita</code>. O
+        INSERT e parametrizado nos dois modos, entao a marcacao gravada e
+        exatamente a que foi digitada. A diferencia esta em como o navegador
+        interpreta essa marcacao na hora de desenhar a lista.
+      </p>
+
+      <div class="aviso" id="painel-aviso">
+        <span aria-hidden="true">&#9888;</span>
+        <div id="texto-aviso"></div>
+      </div>
+
+      <div class="roteiro">
+        <div class="roteiro__titulo">Roteiro do cenario</div>
+        <p>
+          1. No modo <strong>Vulneravel</strong>, grave um comentario com o
+          payload abaixo e recarregue a pagina.<br />
+          2. O <code>onerror</code> dispara assim que a lista e desenhada, sem
+          nova interacao: e isso o XSS armazenado.<br />
+          3. Alterne para <strong>Seguro</strong>, recarregue e veja o mesmo
+          comentario aparecer como texto literal, com a tag a vista.<br />
+          4. Use "Restaurar laboratorio" para apagar os comentarios de teste.
+        </p>
+        <code class="payload" data-exemplo data-alvo="#campo-texto">&lt;img src=x onerror=alert(document.domain)&gt;</code>
+        <code class="payload" data-exemplo data-alvo="#campo-texto">&lt;img src=x onerror="fetch('/api/mode').then(r=&gt;r.text()).then(t=&gt;alert('modo: '+t))"&gt;</code>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Novo comentario</div>
+        <form id="formulario">
+          <div class="linha-form">
+            <div>
+              <label class="rotulo" for="campo-autor">Nome do autor</label>
+              <input
+                class="campo"
+                id="campo-autor"
+                name="nome_autor"
+                maxlength="80"
+                placeholder="Chef Ana"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <div class="linha-form">
+            <div class="campo-largo">
+              <label class="rotulo" for="campo-texto">Comentario</label>
+              <textarea
+                class="campo"
+                id="campo-texto"
+                name="texto_comentario"
+                maxlength="2000"
+                placeholder="Molho branco de alho fica perfeito com massa fresca."
+              ></textarea>
+            </div>
+          </div>
+          <button type="submit" class="botao botao--primario">Publicar comentario</button>
+        </form>
+        <p class="suave" id="resumo" style="margin: 12px 0 0; font-size: 0.86rem"></p>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Comentarios</div>
+        <ul class="comentarios" id="lista-comentarios"></ul>
+        <p class="vazio oculto" id="lista-vazia">
+          Nenhum comentario publicado.
+        </p>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Resposta bruta da API</div>
+        <pre class="json oculto" id="json-resposta"></pre>
+      </div>
+
+      <footer class="rodape">
+        <a class="botao" href="/banco/noticia.html">&larr; Cenario 3 - Noticia</a>
+      </footer>
+    </main>
+
+    <script type="module" src="./receitas.js"></script>
+  </body>
+</html>
