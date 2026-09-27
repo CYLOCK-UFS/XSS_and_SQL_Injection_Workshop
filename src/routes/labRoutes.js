@@ -58,15 +58,33 @@ export async function resetLab(req, res) {
 
 router.post('/reset', resetLab);
 
-/** Health check: confirma aplicacao e banco no ar (usado por T01 e T05). */
+/**
+ * Health check: confirma aplicacao e banco no ar (usado por T01 e T05).
+ *
+ * Nao propaga a excecao quando o banco esta fora. Um health check que
+ * responde 500 nao serve para nada: o HEALTHCHECK do container e o
+ * `condition: service_healthy` do compose so conseguem reagir a um `ok`.
+ * O erro vai para o log e a resposta carrega `ok: false` com 503, que e o
+ * codigo que o Docker espera para marcar o container como unhealthy.
+ */
 router.get('/health', async (req, res) => {
-  const tabelas = await checkDatabase();
-  res.json({
-    ok: true,
-    mode: req.labMode,
-    banco: dbConfig.database,
-    tabelas,
-  });
+  try {
+    const tabelas = await checkDatabase();
+    res.json({
+      ok: true,
+      mode: req.labMode,
+      banco: dbConfig.database,
+      tabelas,
+    });
+  } catch (error) {
+    console.error('[lab] health check falhou:', error.code || error.name, '-', error.message);
+    res.status(503).json({
+      ok: false,
+      mode: req.labMode,
+      banco: dbConfig.database,
+      erro: 'Banco de dados indisponivel.',
+    });
+  }
 });
 
 export default router;

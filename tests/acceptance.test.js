@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import supertest from 'supertest';
 import { createApp } from '../src/app.js';
-import { closeDatabase, waitForDatabase } from '../src/config/database.js';
+import { closeDatabase, pool, waitForDatabase } from '../src/config/database.js';
 
 const app = createApp();
 const api = () => supertest(app);
@@ -101,9 +101,176 @@ describe('T01 - Docker Compose sobe aplicacao e MySQL com os seeds', () => {
 });
 
 /* ========================================================================== */
+/* T01 (continuacao) - O dicionario do DAS, secao 5                           */
+/* ========================================================================== */
+/*
+ * O DAS trata a secao 5 como contrato: "Este dicionario e parte do contrato e
+ * deve ser seguido por init.sql, repositories e rotas". Verificar so a
+ * quantidade de tabelas nao impede que um rename de coluna, um tipo trocado ou
+ * uma coluna nova passem despercebidos. Aqui a comparacao e exata: nome, tipo e
+ * ordem de cada coluna, mais a primary key.
+ */
+
+/** Dicionario esperado, transcrito da secao 5 do DAS v2.2. */
+const DICIONARIO = {
+  agencias: {
+    pk: 'id_agencia',
+    colunas: [
+      'id_agencia varchar(20)',
+      'nome_agencia varchar(100)',
+      'endereco varchar(150)',
+      'telefone varchar(30)',
+      'gerente varchar(80)',
+      'cidade varchar(60)',
+    ],
+  },
+  cartoes_credito: {
+    pk: 'id_cartao',
+    colunas: [
+      'id_cartao varchar(20)',
+      'titular varchar(100)',
+      'numero_cartao varchar(30)',
+      'cvv varchar(10)',
+      'validade varchar(15)',
+    ],
+  },
+  administradores: {
+    pk: 'id_admin',
+    colunas: [
+      'id_admin varchar(20)',
+      'username varchar(50)',
+      'senha_hash varchar(100)',
+      'senha varchar(50)',
+    ],
+  },
+  clientes: {
+    pk: 'id_cliente',
+    colunas: [
+      'id_cliente varchar(20)',
+      'nome varchar(100)',
+      'cpf varchar(20)',
+      'numero_telefone varchar(30)',
+      'saldo_conta varchar(30)',
+    ],
+  },
+  extratos: {
+    pk: 'id_lancamento',
+    colunas: [
+      'id_lancamento varchar(20)',
+      'id_conta varchar(20)',
+      'descricao varchar(100)',
+      'valor varchar(30)',
+      'data_lancamento varchar(20)',
+    ],
+  },
+  noticias: {
+    pk: 'id',
+    colunas: [
+      'id varchar(20)',
+      'titulo varchar(150)',
+      'conteudo text',
+      'data_publicacao varchar(20)',
+    ],
+  },
+  comentarios_receita: {
+    pk: 'id_comentario',
+    colunas: [
+      'id_comentario int',
+      'nome_autor varchar(80)',
+      'texto_comentario text',
+      'data_postagem datetime',
+    ],
+  },
+};
+
+describe('T01 - O dicionario de colunas do DAS coincide com o banco', () => {
+  it('cada tabela tem exatamente as colunas e os tipos da secao 5, na ordem', async () => {
+    const [tabelas] = await pool.query(
+      `SELECT table_name, column_name, column_type, ordinal_position
+         FROM information_schema.columns
+        WHERE table_schema = ?
+        ORDER BY table_name, ordinal_position`,
+      ['lab_palestra'],
+    );
+
+    const porTabela = new Map();
+    for (const linha of tabelas) {
+      if (!porTabela.has(linha.TABLE_NAME)) {
+        porTabela.set(linha.TABLE_NAME, []);
+      }
+      porTabela.get(linha.TABLE_NAME).push(
+        `${linha.COLUMN_NAME} ${linha.COLUMN_TYPE}`,
+      );
+    }
+
+    assert.deepEqual(
+      [...porTabela.keys()].sort(),
+      Object.keys(DICIONARIO).sort(),
+      'tabelas do banco divergem do dicionario',
+    );
+
+    for (const [tabela, esperado] of Object.entries(DICIONARIO)) {
+      assert.deepEqual(porTabela.get(tabela), esperado.colunas, tabela);
+    }
+  });
+
+  it('a primary key de cada tabela e a coluna do dicionario', async () => {
+    const [pks] = await pool.query(
+      `SELECT table_name, column_name
+         FROM information_schema.key_column_usage
+        WHERE table_schema = ? AND constraint_name = 'PRIMARY'
+        ORDER BY table_name`,
+      ['lab_palestra'],
+    );
+
+    const porTabela = new Map(pks.map((l) => [l.TABLE_NAME, l.COLUMN_NAME]));
+    for (const [tabela, esperado] of Object.entries(DICIONARIO)) {
+      assert.equal(porTabela.get(tabela), esperado.pk, `pk de ${tabela}`);
+    }
+  });
+
+  it('comentarios_receita usa INT, TEXT e DATETIME, nao apenas VARCHAR', async () => {
+    // Ponto explicito do DAS: "A tabela comentarios_receita nao e composta
+    // apenas por VARCHAR: usa INT, TEXT e DATETIME."
+    const [linhas] = await pool.query(
+      `SELECT column_name, data_type, extra
+         FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'comentarios_receita'`,
+      ['lab_palestra'],
+    );
+
+    const porNome = new Map(linhas.map((l) => [l.COLUMN_NAME, l]));
+
+    assert.equal(porNome.get('id_comentario').DATA_TYPE, 'int');
+    assert.equal(porNome.get('id_comentario').EXTRA, 'auto_increment');
+    assert.equal(porNome.get('texto_comentario').DATA_TYPE, 'text');
+    assert.equal(porNome.get('data_postagem').DATA_TYPE, 'datetime');
+  });
+
+  it('o dicionario nao diverge dos SELECTs publicos dos repositories', async () => {
+    // /banco/agencias precisa devolver 4 colunas (assinatura do UNION) e os
+    // nomes precisam existir de fato na tabela.
+    const resposta = await noModo('vuln', 'get', '/banco/agencias?cidade=Sao Paulo');
+    const colunasPublicas = Object.keys(resposta.body.agencias[0]);
+
+    assert.deepEqual(colunasPublicas, [
+      'nome_agencia',
+      'endereco',
+      'telefone',
+      'gerente',
+    ]);
+    for (const coluna of colunasPublicas) {
+      assert.ok(
+        DICIONARIO.agencias.colunas.some((c) => c.startsWith(`${coluna} `)),
+        `coluna publica ${coluna} fora do dicionario`,
+      );
+    }
+  });
+});
+
+/* ========================================================================== */
 /* T02 e T03 - Contrato de modo (secao 3)                                     */
 /* ========================================================================== */
-
 describe('T02 - POST /api/mode {mode:vuln} cria o cookie e ativa o modo', () => {
   it('responde com Set-Cookie lab_mode=vuln', async () => {
     const resposta = await api()
@@ -175,6 +342,57 @@ describe('T03 - POST /api/mode {mode:safe} cria o cookie e ativa o modo', () => 
   it('sem cookie, o laboratorio assume vuln', async () => {
     const resposta = await api().get('/api/mode').expect(200);
     assert.equal(resposta.body.mode, 'vuln');
+  });
+
+  it('a URL nao troca o modo: a query string e reservada ao cenario', async () => {
+    // Secao 3 do DAS: "URL das rotas nao contem o modo; query string fica
+    // reservada aos parametros do cenario". O modo vem exclusivamente do
+    // cookie lab_mode. Estes testes travam a invariante para que ninguem
+    // adicione leitura de ?modo= sem quebrar o contrato em silencio.
+    const tentativas = 'modo=safe&mode=safe&labMode=safe&lab_mode=safe&vuln=false';
+
+    /** Anexa a query preservando o parametro do cenario que ja existe. */
+    const comQuery = (rota) =>
+      `${rota}${rota.includes('?') ? '&' : '?'}${tentativas}`;
+
+    const comVuln = supertest.agent(app);
+    await comVuln.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+    for (const rota of [
+      '/banco/agencias?cidade=Sao Paulo',
+      '/banco/extrato?id_conta=CLI001',
+      '/banco/noticia?id=5',
+      '/receitas',
+    ]) {
+      const resposta = await comVuln.get(comQuery(rota)).expect(200);
+      assert.equal(resposta.body.modo, 'vuln', `URL alterou o modo em ${rota}`);
+    }
+
+    const comSafe = supertest.agent(app);
+    await comSafe.post('/api/mode').send({ mode: 'safe' }).expect(200);
+    for (const rota of [
+      '/banco/agencias?cidade=Sao Paulo',
+      '/banco/extrato?id_conta=CLI001',
+      '/banco/noticia?id=5',
+      '/receitas',
+    ]) {
+      const resposta = await comSafe
+        .get(`${rota}${rota.includes('?') ? '&' : '?'}modo=vuln&lab_mode=vuln`)
+        .expect(200);
+      assert.equal(resposta.body.modo, 'safe', `URL alterou o modo em ${rota}`);
+    }
+  });
+
+  it('a query string nao é lida pelo middleware de modo', async () => {
+    // Defence in depth: alem do teste comportamental acima, o proprio
+    // middleware nao pode tocar em req.query.
+    const { readFile } = await import('node:fs/promises');
+    const codigo = await readFile(
+      new URL('../src/middleware/mode.js', import.meta.url),
+      'utf8',
+    );
+
+    assert.equal(/req\.query/.test(codigo), false);
+    assert.equal(/req\.params/.test(codigo), false);
   });
 });
 
@@ -429,5 +647,120 @@ describe('T09 - o laboratorio nao e publicado fora da rede local', () => {
     const resposta = await api().get('/api/health').expect(200);
     // O host e o endereco de loopback usado pelo laboratorio.
     assert.equal(resposta.body.ok, true);
+  });
+});
+
+/* ========================================================================== */
+/* T10 - Robustez do reset e dos parametros de query                          */
+/* ========================================================================== */
+/*
+ * Nao esta no DAS: sao invariantes do proprio laboratorio, sem as quais uma
+ * demonstracao ao vivo quebra sem que ninguem tenha feito nada de errado.
+ *
+ * Este bloco roda depois de T08, que ja deixou o banco no estado inicial.
+ */
+
+describe('T10 - o reset e serializado', () => {
+  it('dois POST /api/reset simultaneos nao corrompem o banco', async () => {
+    // Sem serializacao, dois init.sql concorrentes intercalam DROP TABLE e as
+    // consultas em andamento falham com "table doesn't exist". Aqui os dois
+    // resets disputam o mesmo estado e ambos precisam devolver 200.
+    const [primeiro, segundo] = await Promise.all([
+      api().post('/api/reset'),
+      api().post('/api/reset'),
+    ]);
+
+    assert.equal(primeiro.status, 200);
+    assert.equal(segundo.status, 200);
+    assert.equal(primeiro.body.ok, true);
+    assert.equal(segundo.body.ok, true);
+
+    // Se o estado ficou consistente, as 7 tabelas respondem de novo.
+    const health = await api().get('/api/health').expect(200);
+    assert.equal(health.body.ok, true);
+    assert.equal(health.body.tabelas, 7);
+
+    const agencias = await api().get('/banco/agencias').expect(200);
+    assert.equal(agencias.body.total, 10);
+  });
+});
+
+describe('T10 - os parametros de query sao lidos como texto', () => {
+  /**
+   * O Express 5 usa o parser `simple`: um parametro repetido vira array
+   * (?cidade=A&cidade=B) e a notacao de colchetes vira a chave literal
+   * "cidade[x]", deixando req.query.cidade indefinido.
+   *
+   * Sem normalizacao o array chega ao repository: no modo vuln a interpolacao
+   * vira "WHERE cidade = 'Sao Paulo,Recife'" e no modo safe o placeholder recebe
+   * um array. Nos dois casos o resultado e silenciosamente errado e o painel
+   * mostra um array no lugar de um filtro de texto.
+   */
+  const ENTRADAS_NAO_TEXTO = [
+    '/banco/agencias?cidade=Sao%20Paulo&cidade=Recife',
+    '/banco/agencias?cidade[x]=Sao%20Paulo',
+    '/banco/extrato?id_conta=CLI001&id_conta=CLI002',
+    '/banco/extrato?id_conta[x]=CLI001',
+  ];
+
+  it('nenhuma das formas nao-textuais e ecoada como array ou objeto', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      for (const rota of ENTRADAS_NAO_TEXTO) {
+        const resposta = await sessao.get(rota).expect(200);
+
+        const ecoado = rota.startsWith('/banco/agencias')
+          ? resposta.body.filtro.cidade
+          : resposta.body.conta;
+
+        assert.equal(
+          typeof ecoado,
+          'string',
+          `${rota} ecoou ${typeof ecoado} no modo ${modo}`,
+        );
+      }
+    }
+  });
+
+  it('um parametro ausente, repetido ou em colchetes equivale a consulta sem filtro', async () => {
+    const semFiltro = await api().get('/banco/agencias').expect(200);
+    const comArray = await api().get('/banco/agencias?cidade=A&cidade=B').expect(200);
+    const comColchetes = await api().get('/banco/agencias?cidade[x]=A').expect(200);
+
+    assert.equal(semFiltro.body.total, 10);
+    assert.equal(comArray.body.total, 10);
+    assert.equal(comColchetes.body.total, 10);
+    assert.equal(comArray.body.filtro.cidade, '');
+    assert.equal(comColchetes.body.filtro.cidade, '');
+  });
+
+  /**
+   * /banco/noticia nao ecoa o id, entao a forma da entrada nao é observavel
+   * pela resposta. O que precisa ser provado aqui e mais fraco: a entrada
+   * NAOTextual nao chega ao SQL como texto nao quoting, porque isso estouraria
+   * o parser do MySQL e a resposta seria 500 em vez do oraculo 200/404.
+   *
+   * A prova de que o valor e uma string de fato vem do teste de unidade de
+   * buscarNoticia, com executor injetado (tests/unit/lab.test.js).
+   */
+  it('em /banco/noticia a entrada nao-textual nao quebra o oraculo 200/404', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      for (const rota of [
+        '/banco/noticia?id=5&id=6',
+        '/banco/noticia?id[x]=5',
+      ]) {
+        const resposta = await sessao.get(rota);
+        assert.ok(
+          resposta.status === 200 || resposta.status === 404,
+          `${rota} respondeu ${resposta.status} no modo ${modo}`,
+        );
+        assert.equal('detalhes' in resposta.body, false);
+      }
+    }
   });
 });

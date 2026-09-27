@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM"],
+
+    /**
+     * O projeto e JavaScript puro. `checkJs` faz o TypeScript ANALISAR os .js
+     * sem emitir nada: o ganho e achar bug real (propriedade inexistente, typo em
+     * nome, retorno ausente, await faltando) que o Node executaria sem reclamar.
+     *
+     * `noEmit` e obrigatorio e o oposto de "migrar para TypeScript": nao entra
+     * um unico .ts no repositorio, e o que roda no container continua sendo o
+     * mesmo JavaScript de antes.
+     */
+    "checkJs": true,
+    "noEmit": true,
+    "allowJs": true,
+
+    /**
+     * `strict` desligado: um laboratorio nao deve falhar o typecheck por causa de
+     * parametro nao usado ou comentario faltando. As flags abaixo sao as que
+     * pegam erro de verdade.
+     */
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  /**
+   * O `include` tambem traz os arquivos de declaracao, e nao so os `.js`: e o
+   * padrao que faz `req.labMode` e `LinhasSql` existirem para o typecheck. Sem
+   * ele os `.d.ts` ficam de fora e o `tsc` acusa "Cannot find name" justamente
+   * do que eles deveriam estar explicando.
+   *
+   * `tests/e2e` fica de fora de proposito: os specs usam a API do Playwright,
+   * cujo tipo muda de versao em versao, e nao ha valor didatico em travar o
+   * typecheck do laboratorio por causa do runner.
+   */
+  "include": ["src/**/*.js", "src/**/*.d.ts", "playwright.config.js"],
+  "exclude": ["node_modules", "tests/e2e"]
+}

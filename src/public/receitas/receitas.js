@@ -24,8 +24,29 @@ import {
 const modo = await iniciarLaboratorio();
 
 const formulario = document.querySelector('#formulario');
-const campoAutor = document.querySelector('#campo-autor');
-const campoTexto = document.querySelector('#campo-texto');
+
+/**
+ * As anotacoes abaixo existem so para o `tsc --checkJs`.
+ *
+ * `querySelector` devolve `Element`, que nao tem `value` nem `disabled` -- o
+ * tipo real de um campo de formulario e `HTMLTextAreaElement`, e o de um botao e
+ * `HTMLButtonElement`. Como o JavaScript nao tem anotacao de tipo, o
+ * `querySelector` erra para o tipo mais generico e o typecheck acusaria
+ * propriedade inexistente em onze linhas.
+ *
+ * A alternativa seria trocar `querySelector` por `getElementById`, que ja
+ * devolve o tipo certo -- mas o seletor por id e mais legivel para quem esta
+ * lendo o laboratorio, e trocar o estilo do codigo para agradar ao typecheck
+ * seria o tipo de cambio que atrapalha mais do que ajuda.
+ *
+ * Nenhuma dessas anotacoes altera o runtime.
+ */
+const campoAutor = /** @type {HTMLTextAreaElement} */ (
+  document.querySelector('#campo-autor')
+);
+const campoTexto = /** @type {HTMLTextAreaElement} */ (
+  document.querySelector('#campo-texto')
+);
 const lista = document.querySelector('#lista-comentarios');
 const vazio = document.querySelector('#lista-vazia');
 const resumo = document.querySelector('#resumo');
@@ -57,7 +78,9 @@ await carregar();
 async function publicar(evento) {
   evento.preventDefault();
 
-  const botao = formulario.querySelector('button[type="submit"]');
+  const botao = /** @type {HTMLButtonElement} */ (
+    formulario.querySelector('button[type="submit"]')
+  );
   botao.disabled = true;
 
   try {

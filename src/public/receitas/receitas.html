@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ChefLab - comentarios de receitas</title>
     <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
   </head>
   <body>
     <header class="topo">
       <div class="topo__interno">
         <a class="topo__marca" href="/">
+          <img class="topo__escudo" src="/img/escudo-liga.png" alt="" />
           <strong>ChefLab</strong>
           <span>Cenario 4 - XSS armazenado</span>
         </a>
@@ -49,6 +52,31 @@
         </p>
         <code class="payload" data-exemplo data-alvo="#campo-texto">&lt;img src=x onerror=alert(document.domain)&gt;</code>
         <code class="payload" data-exemplo data-alvo="#campo-texto">&lt;img src=x onerror="fetch('/api/mode').then(r=&gt;r.text()).then(t=&gt;alert('modo: '+t))"&gt;</code>
+        <code class="payload" data-exemplo data-alvo="#campo-autor">&lt;img src=x onerror=alert(1)&gt;</code>
+
+        <div class="painel__titulo" style="margin-top: 18px">
+          Os dois campos sao sinks
+        </div>
+        <p>
+          O roteiro acima usa o campo <strong>Comentario</strong>, e ele nao e o
+          unico ponto de injecao da pagina. No modo vulneravel,
+          <code>renderizarComInnerHTML</code> em <code>receitas.js</code>
+          interpola <strong>os dois campos</strong> no mesmo
+          <code>innerHTML</code>: o texto em
+          <code>comentario__texto</code> e o nome do autor em
+          <code>strong</code> dentro de <code>comentario__autor</code>. Por
+          isso o terceiro payload acima vai para <strong>Nome do autor</strong>
+          -- grave-o la e recarregue, e o <code>onerror</code> dispara do mesmo
+          jeito.
+        </p>
+        <p>
+          Isso e o que a auditoria de sink costuma deixar passar: o DAS documenta
+          <code>texto_comentario</code> como a entrada do cenario, e o autor
+          passa a ser um segundo ponto de injecao que ninguem aponta no roteiro.
+          A correcao e a mesma nos dois campos --
+          <code>textContent</code> em vez de <code>innerHTML</code> --, mas o
+          primeiro passo e saber quantos sinks existem.
+        </p>
       </div>
 
       <div class="painel">
@@ -82,6 +110,33 @@
           <button type="submit" class="botao botao--primario">Publicar comentario</button>
         </form>
         <p class="suave" id="resumo" style="margin: 12px 0 0; font-size: 0.86rem"></p>
+      </div>
+
+      <div class="painel">
+        <div class="painel__titulo">Por que 80 e 2000</div>
+        <p>
+          Os dois <code>maxlength</code> acima nao sao um detalhe de interface:
+          eles espelham o schema. <code>nome_autor</code> e
+          <code>VARCHAR(80)</code> e <code>texto_comentario</code> e
+          <code>TEXT</code> (ate 65535 bytes), recortado pela aplicacao em 2000.
+        </p>
+        <p>
+          O limite de 80 e o que merece atencao, porque ele muda a natureza do
+          payload. Um <code>&lt;img src=x onerror=...&gt;</code> cabe folgadamente,
+          mas um payload mais voraz -- com <code>&lt;script&gt;</code>, uma cadeia
+          de <code>&lt;iframe&gt;</code> ou <code>document.write</code> -- e
+          cortado no meio da tag. No modo vulneravel a tag truncada continua
+          sendo HTML analisada: o <code>onerror</code> de um
+          <code>&lt;img&gt;</code> basta para executar codigo, e ele precisa de
+          poucos caracteres. Entao <strong>o limite de tamanho nao mitiga o
+          XSS</strong>: ele apenas reduz quais variantes cabem.
+        </p>
+        <p>
+          Pior: o <code>maxlength</code> e validacao de cliente. Ele nao existe
+          no outro lado do fio, e quem chamar <code>POST /receitas</code> direto
+          com <code>curl</code> ou <code>fetch</code> envia o que quiser. A
+          defense que importa continua sendo na saida, e nao no formulario.
+        </p>
       </div>
 
       <div class="painel">

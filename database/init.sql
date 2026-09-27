@@ -191,6 +191,25 @@ INSERT INTO noticias (id, titulo, conteudo, data_publicacao) VALUES
 -- RENDERIZACAO DA SAIDA (src/public/receitas), nao no INSERT.
 -- Os dois comentarios abaixo sao o estado inicial restaurado por /api/reset.
 -- -----------------------------------------------------------------------------
+-- ChefLab: comentarios de receita (DAS v2.2, secao 4.4 - XSS armazenado).
+--
+-- `nome_autor` e VARCHAR(80) por escolha, e o tamanho e parte do exercicio.
+--
+-- O tamanho limita QUAIS payloads cabem, nao se o XSS existe. Um
+-- `<img src=x onerror=alert(document.domain)>` tem cerca de 40 caracteres e
+-- cabe folgadamente; `onerror` precisa de poucos para executar codigo. Um
+-- payload mais voraz -- com `<script>`, cadeia de `<iframe>` ou
+-- `document.write` -- e truncado no meio da tag, e tag truncada continua
+-- sendo HTML analisada pelo navegador.
+--
+-- O outro limite, mais facil de confundir: `texto_comentario` e TEXT, que
+-- guarda ate 65535 bytes. Quem escreve 2000 e a aplicacao
+-- (LIMITE_TEXTO em src/repositories/receitasRepository.js), nao o schema.
+--
+-- E nenhum dos dois e uma defesa. O `maxlength` do formulario espelha o
+-- VARCHAR(80), mas `maxlength` e validacao de CLIENTE: quem chamar
+-- `POST /receitas` com curl envia o que quiser. A mitigacao do cenario esta
+-- na saida, em src/public/receitas/receitas.js.
 CREATE TABLE comentarios_receita (
   id_comentario   INT AUTO_INCREMENT NOT NULL,
   nome_autor      VARCHAR(80) NOT NULL,

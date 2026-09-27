@@ -43,6 +43,21 @@ services:
     # T09: idem para a aplicacao.
     ports:
       - "127.0.0.1:3000:3000"
+    # Espelha o HEALTHCHECK do Dockerfile para quem sobe com `docker compose up`
+    # (que usa a imagem ja construida) ter o mesmo sinal. Sem isto, `docker
+    # compose ps` nunca mostra o app como healthy.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       db:
         condition: service_healthy

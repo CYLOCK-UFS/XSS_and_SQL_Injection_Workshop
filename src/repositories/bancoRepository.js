@@ -15,6 +15,20 @@ import { LAB_MODE_VULN } from '../middleware/mode.js';
 const AGENCIAS_COLUNAS = 'nome_agencia, endereco, telefone, gerente';
 const AGENCIAS_SQL = `SELECT ${AGENCIAS_COLUNAS} FROM agencias`;
 
+/**
+ * O executor de SQL entra por parametro, com o pool como padrao.
+ *
+ * Em producao ninguem passa nada: todas as rotas chamam `listarAgencias(cidade,
+ * { labMode })` e recebem o pool. A razao do parametro e permitir que
+ * tests/unit/lab.test.js injete um executor falso e verifique a parte que
+ * importa para a aula -- que o modo vuln monta texto e o modo safe usa
+ * placeholder -- sem subir MySQL, sem seed e sem depender da rede.
+ *
+ * E o mesmo executor para os dois cenarios de proposito: um duplo que so
+ * imitasse o caminho seguro deixaria a interpolacao passar sem ninguem ver.
+ */
+const executorPadrao = pool;
+
 const EXTRATO_COLUNAS =
   'id_lancamento, id_conta, descricao, valor, data_lancamento';
 
@@ -26,32 +40,40 @@ const CIDADES_DISPONIVEIS_SQL =
 /**
  * Cenario 1 - SQLi UNION (DAS 4.1).
  * Payloads previstos (query string da pagina):
- *   ' UNION SELECT titular, numero_cartao, cvv, validade FROM cartoes_credito -- 
+ *   ' UNION SELECT titular, numero_cartao, cvv, validade FROM cartoes_credito --
+ *
+ * O `@returns` mantem a camada visivel para o typecheck: sem ele o retorno do
+ * mysql2 vira `any` e um `await` esquecido em quem chama passa sem aviso.
+ *
+ * @returns {Promise<LinhasSql>}
  */
-export async function listarAgencias(cidade, { labMode }) {
+export async function listarAgencias(cidade, { labMode, executor = executorPadrao }) {
   if (cidade === undefined || cidade === null || cidade === '') {
-    const [rows] = await pool.execute(
+    const [rows] = await executor.execute(
       `${AGENCIAS_SQL} ORDER BY nome_agencia`,
     );
-    return rows;
+    return /** @type {LinhasSql} */ (rows);
   }
 
   if (labMode === LAB_MODE_VULN) {
     const sql = `${AGENCIAS_SQL} WHERE cidade = '${cidade}' ORDER BY nome_agencia`;
-    const [rows] = await pool.query(sql);
-    return rows;
+    const [rows] = await executor.query(sql);
+    return /** @type {LinhasSql} */ (rows);
   }
 
-  const [rows] = await pool.execute(
+  const [rows] = await executor.execute(
     `${AGENCIAS_SQL} WHERE cidade = ? ORDER BY nome_agencia`,
     [cidade],
   );
-  return rows;
+  return /** @type {LinhasSql} */ (rows);
 }
 
-export async function listarCidades() {
-  const [rows] = await pool.execute(CIDADES_DISPONIVEIS_SQL);
-  return rows.map((row) => row.cidade);
+/** @returns {Promise<string[]>} */
+export async function listarCidades({ executor = executorPadrao } = {}) {
+  const [rows] = await executor.execute(CIDADES_DISPONIVEIS_SQL);
+  return /** @type {string[]} */ (
+    /** @type {LinhasSql} */ (rows).map((row) => row.cidade)
+  );
 }
 
 /**
@@ -62,19 +84,21 @@ export async function listarCidades() {
  *
  * No modo vuln o erro chega ao errorHandler, que expoe err.sqlMessage.
  * No modo safe a query vai parametrizada e o erro vira mensagem generica.
+ *
+ * @returns {Promise<LinhasSql>}
  */
-export async function buscarExtrato(idConta, { labMode }) {
+export async function buscarExtrato(idConta, { labMode, executor = executorPadrao }) {
   if (labMode === LAB_MODE_VULN) {
     const sql = `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = '${idConta}' ORDER BY data_lancamento`;
-    const [rows] = await pool.query(sql);
-    return rows;
+    const [rows] = await executor.query(sql);
+    return /** @type {LinhasSql} */ (rows);
   }
 
-  const [rows] = await pool.execute(
+  const [rows] = await executor.execute(
     `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = ? ORDER BY data_lancamento`,
     [idConta],
   );
-  return rows;
+  return /** @type {LinhasSql} */ (rows);
 }
 
 /**
@@ -87,21 +111,25 @@ export async function buscarExtrato(idConta, { labMode }) {
  *
  * Erros de banco sao suprimidos pelo chamador: aqui o unico canal de resposta
  * e o conteudo da noticia.
+ *
+ * @returns {Promise<LinhaSql | null>}
  */
-export async function buscarNoticia(id, { labMode }) {
+export async function buscarNoticia(id, { labMode, executor = executorPadrao }) {
   if (labMode === LAB_MODE_VULN) {
     const sql = `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = '${id}'`;
-    const [rows] = await pool.query(sql);
-    return rows[0] || null;
+    const [rows] = await executor.query(sql);
+    const linhas = /** @type {LinhasSql} */ (rows);
+    return linhas[0] || null;
   }
 
   if (!/^\d{1,20}$/.test(String(id))) {
     return null;
   }
 
-  const [rows] = await pool.execute(
+  const [rows] = await executor.execute(
     `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = ?`,
     [id],
   );
-  return rows[0] || null;
+  const linhas = /** @type {LinhasSql} */ (rows);
+  return linhas[0] || null;
 }

@@ -4,3 +4,11 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 coverage/
+
+# Artefatos do runner de E2E. Sao recriados a cada `npm run test:e2e` que falha
+# e contem screenshot e trace do navegador -- uteis para depurar na hora, e lixo
+# no repositorio.
+test-results/
+playwright-report/
+blob-report/
+.playwright/

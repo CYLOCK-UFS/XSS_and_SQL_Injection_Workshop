@@ -67,3 +67,4 @@ router.post('/', async (req, res) => {
 router.post('/reset', resetLab);
 
 export default router;
+

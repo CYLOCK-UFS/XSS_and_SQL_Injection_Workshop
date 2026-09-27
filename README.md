@@ -106,6 +106,50 @@ na **saída**, em `src/public/receitas/receitas.js`:
 
 Ative o payload com o botão **Usar no campo** e recarregue a página.
 
+### Os dois sinks, e não só um
+
+O roteiro acima usa o campo **Comentário**, mas `renderizarComInnerHTML()`
+interpola **dois** campos no mesmo `innerHTML`:
+
+| Campo do formulário | Coluna | Onde entra no `innerHTML` |
+| --- | --- | --- |
+| Comentário | `texto_comentario` | `p.comentario__texto` |
+| **Nome do autor** | `nome_autor` | `strong` dentro de `p.comentario__autor` |
+
+O nome do autor é um ponto de injeção tão real quanto o texto, e nenhum ponto do
+roteiro o aponta. Grave o payload no campo **Nome do autor** e o `onerror`
+dispara do mesmo jeito:
+
+```html
+<img src=x onerror=alert(1)>
+```
+
+A correção é a mesma nos dois campos — `textContent` em vez de `innerHTML` —, mas
+o primeiro passo de uma auditoria de sink é contar quantos existem. O
+`tests/e2e/cheflab.spec.js` fixa os dois comportamentos, no modo vulnerável e no
+modo seguro, justamente para o segundo sink não voltar a ser silencioso.
+
+### O `maxlength` não mitiga nada
+
+`nome_autor` é `VARCHAR(80)` e o formulário espelha isso com `maxlength="80"`;
+`texto_comentario` é `TEXT` (até 65535 bytes) e a aplicação recorta em 2000. O
+limite de 80 muda a natureza do payload, não a sua existência: um
+`<img src=x onerror=...>` cabe folgadamente, e `onerror` precisa de poucos
+caracteres. Payload mais longo é cortado no meio da tag — e tag cortada
+continua sendo HTML analisada.
+
+Some-se a isso que `maxlength` é validação de **cliente**: quem chamar
+`POST /receitas` com `curl` envia o que quiser. A defesa que importa é na saída.
+
+### Por que o cookie de modo é `HttpOnly`
+
+O laboratório tem um XSS armazenado funcional, então o cookie `lab_mode` não
+pode ser legível por JavaScript. Se fosse, o payload da página do ChefLab leria
+o modo e o reescreveria, e o atacante escolheria o `vuln` sozinho. Por isso o
+modo vive num cookie `HttpOnly` lido no servidor, e não numa global, num header
+ou na query string. Não há `secure: true` porque o laboratório roda em
+`http://127.0.0.1`; com TLS, `secure: true` faz parte do mesmo raciocínio.
+
 ## Roteiro sugerido para a apresentação
 
 1. Deixe o modo em **Vulnerável** (acento vermelho na barra).
@@ -135,8 +179,8 @@ registros-base das demais tabelas, não só os comentários.
 
 ## Testes
 
-O plano de aceite T01–T09 do DAS está implementado em `tests/acceptance.test.js`
-(`node:test` + `supertest`, 28 verificações).
+O plano de aceite T01–T10 do DAS está implementado em `tests/acceptance.test.js`
+(`node:test` + `supertest`).
 
 ```bash
 docker compose up -d db   # os testes rodam no host, não no container
@@ -146,6 +190,48 @@ npm test
 Os testes **não** rodam dentro da imagem: o `Dockerfile` instala com
 `--omit=dev`, então o `supertest` não existe no container. Suba só o banco e
 execute `npm test` na máquina.
+
+`npm test` roda com `--test-concurrency=1`. Não é paranoia: os arquivos de teste
+compartilham o mesmo MySQL e chamam `POST /api/reset`, então em paralelo um
+arquivo apagaria os dados que o outro está usando.
+
+### Três camadas de teste
+
+| Comando | O que cobre | Precisa de MySQL |
+| --- | --- | --- |
+| `npm test` | 54 testes: aceite T01–T10, unidade dos repositories, encaminhamento de erro | sim |
+| `npm run test:e2e` | 16 testes: XSS **executando** no navegador, oráculo SQLi, extração caractere a caractere | sim |
+| `npm run typecheck` | `tsc --checkJs` sobre os `.js`, sem emitir nada | não |
+
+O E2E é a única camada que prova que o payload **chega a rodar**: a suíte de
+aceite confere que o `innerHTML` continua no fonte, o que é condição necessária
+e não suficiente — um `Content-Security-Policy` novo, ou um `innerHTML` que
+deixasse de interpolar o comentário, passariam por ela e quebrariam a
+demonstração ao vivo.
+
+Duas decisões do `playwright.config.js` que só apareceram por causa de
+problemas reais:
+
+- **Porta 3100, não 3000.** O container de demonstração ocupa a 3000. Com
+  `reuseExistingServer`, o Playwright encontraria o container, acharia que o
+  servidor já estava de pé, e testaria a cópia do código assada na imagem em vez
+  da árvore de trabalho — os testes ficariam verdes mesmo depois de uma mudança
+  que quebrasse o laboratório.
+- **Navegador do sistema como reserva.** O `npx playwright install` baixa o
+  Chromium; em rede de treinamento isolada esse download falha. O config detecta
+  a ausência do Chromium empacotado e cai para `msedge`/`chrome`.
+
+```bash
+npm run test:e2e                     # 16 testes
+PLAYWRIGHT_CHANNEL=chrome npm run test:e2e   # fixa o navegador do sistema
+```
+
+`npm run typecheck` não converte o projeto para TypeScript: não entra um único
+`.ts` no repositório, e o que roda no container continua sendo o mesmo
+JavaScript. Ele pega referência não definida, código morto e `await` esquecido —
+este último só depois de os repositories declararem `@returns`, porque sem isso o
+retorno do `mysql2` degrada para `any`.
+
 
 ## Estrutura
 
@@ -164,7 +250,12 @@ src/public/banco/              cenários 1 a 3
 src/public/receitas/           cenário 4 (sink XSS)
 src/public/css/lab.css         CSS próprio, sem CDN — o lab roda offline
 src/public/js/lab.js           modo, reset, roteiros clicáveis
-tests/                         T01–T09
+src/types/                      .d.ts de apoio ao `tsc --checkJs` (não emitem nada)
+tests/acceptance.test.js       T01–T10, `node:test` + supertest
+tests/unit/                     repositories com executor falso; erro assíncrono
+tests/e2e/                      Playwright: XSS executando e oráculo SQLi
+tsconfig.json                   checkJs, noEmit
+playwright.config.js            porta 3100; browser do sistema como reserva
 ```
 
 O CSS é escrito à mão e não usa Tailwind nem CDN de propósito: o laboratório roda
@@ -175,6 +266,8 @@ em rede isolada e precisa funcionar sem internet no projetor.
 | Vulnerabilidade | Mitigação aplicada no modo seguro |
 | --- | --- |
 | SQLi UNION | prepared statement — separa código de valor |
-| SQLi por erro | prepared statement + log interno e mensagem genérica |
+| SQLi por erro | prepared statement + log interno e mensagem generica |
 | SQLi cega | parametrização **e** validação de formato |
 | XSS armazenado | `textContent` em vez de `innerHTML` |
+| XSS no campo de autor | mesmo `textContent` — é o **segundo** sink da página |
+| Roubo do modo pelo XSS | cookie `lab_mode` `HttpOnly`, lido só no servidor |

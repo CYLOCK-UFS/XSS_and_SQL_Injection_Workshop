@@ -67,7 +67,33 @@ export async function closeDatabase() {
  * ATENCAO: esta e a unica conexao do laboratorio com multiplos statements.
  * Nunca reutilize-a para responder a entrada do usuario.
  */
-export async function runInitScript() {
+
+/**
+ * Serializa o reset. Sem isto, dois POST /api/reset simultaneos abrem duas
+ * conexoes e o segundo DROP TABLE corre enquanto o primeiro ainda esta
+ * recriando as tabelas: as consultas em andamento caem em "table doesn't
+ * exist" no meio de uma demonstracao, sem que ninguem tenha feito nada de
+ * errado. O laboratorio inteiro depende de o estado do banco ser consistente,
+ * entao a garantia e melhor dentro do processo do que no MySQL.
+ *
+ * Chamadas concorrentes nao sao enfileiradas: elas compartilham a mesma
+ * promise, porque o resultado desejado (estado inicial restaurado) e o mesmo.
+ */
+let resetEmCurso = null;
+
+export function runInitScript() {
+  if (resetEmCurso) {
+    return resetEmCurso;
+  }
+
+  resetEmCurso = executarInitScript().finally(() => {
+    resetEmCurso = null;
+  });
+
+  return resetEmCurso;
+}
+
+async function executarInitScript() {
   const sql = await readFile(INIT_SQL_URL, 'utf8');
   const connection = await mysql.createConnection({
     ...dbConfig,

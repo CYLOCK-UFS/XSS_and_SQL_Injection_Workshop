@@ -7,21 +7,37 @@
    O modo do laboratorio (cookie lab_mode) escolhe a cor de destaque em
    html[data-modo], de modo que o estado fique visivel a distancia durante a
    apresentacao: vermelho = vulneravel, verde = mitigado.
+
+   REGRA DE MARCA (nao quebrar): a identidade da liga tambem e verde
+   (--marca #00793F, extraido do escudo). Verde de marca so aparece em
+   grafico e superficie: filete do topo, wash do fundo, borda do roteiro,
+   escudo e favicon. Ele NUNCA pinta texto e NUNCA substitui --vuln/--safe,
+   senao o publico le "marca = seguro" enquanto o modo esta vulneravel.
+   Para texto que precisa parecer da marca existe --marca-texto, um branco
+   esverdeado, que nao se confunde com o verde de --safe.
    ============================================================================= */
 
 :root {
   --fonte: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
 
-  --fundo: #0b1220;
-  --fundo-alt: #111c30;
-  --superficie: #16233a;
-  --superficie-2: #1d2d49;
-  --borda: #2b3d5e;
-  --borda-forte: #3d5480;
-  --texto: #e6edf7;
-  --texto-suave: #9db0cc;
-  --marca: #38bdf8;
+  /* Base quase preta + verde da liga, derivados do cabecalho institucional. */
+  --fundo: #07090c;
+  --fundo-alt: #0b0f14;
+  --superficie: #111820;
+  --superficie-2: #172230;
+  --hover: #1c2836;
+  --borda: #23303f;
+  --borda-forte: #35485e;
+  --texto: #f2f6f9;
+  --texto-suave: #93a4b5;
+
+  /* Marca: so grafico e superficie. Ver a regra de marca no topo do arquivo. */
+  --marca: #00793f;
+  --marca-claro: #067c43;
+  --marca-brilho: #12a866;
+  --marca-texto: #e6f2ea;
+  --cod-chave: #7fe0a8;
 
   --vuln: #f87171;
   --vuln-fundo: rgba(248, 113, 113, 0.12);
@@ -64,7 +80,13 @@ body {
 }
 
 a {
-  color: var(--marca);
+  color: var(--marca-texto);
+  text-decoration-color: rgba(0, 121, 63, 0.55);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-color: var(--marca-brilho);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -77,10 +99,31 @@ a {
   padding: 0 20px 56px;
 }
 
+/* O topo reproduz a estetica do cabecalho institucional: fundo quase preto,
+   verde concentrado a esquerda e brancografia a esquerda. O verde entra so
+   como wash e filete, entao o badge de modo continua legivel a distancia. */
 .topo {
+  position: relative;
+  background:
+    radial-gradient(130% 180% at 0% 50%, rgba(0, 121, 63, 0.3), transparent 60%),
+    linear-gradient(180deg, var(--fundo-alt), var(--fundo));
   border-bottom: 1px solid var(--borda);
-  background: linear-gradient(180deg, var(--fundo-alt), var(--fundo));
   margin-bottom: 28px;
+}
+
+.topo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--marca-claro),
+    var(--marca-brilho) 38%,
+    transparent 78%
+  );
 }
 
 .topo__interno {
@@ -96,10 +139,20 @@ a {
 
 .topo__marca {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   text-decoration: none;
   color: var(--texto);
+}
+
+/* Recorte de 554x654 do escudo original: a altura define o tamanho e a
+   largura vem da proporcao, para o escudo nunca aparecer esticado. */
+.topo__escudo {
+  flex: none;
+  width: 34px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
 }
 
 .topo__marca strong {
@@ -217,7 +270,7 @@ a {
 }
 
 .botao:hover {
-  background: #26395a;
+  background: var(--hover);
   border-color: var(--acento-borda);
 }
 
@@ -374,7 +427,7 @@ a {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.7px;
-  color: var(--marca);
+  color: var(--marca-texto);
   margin-bottom: 8px;
 }
 
@@ -393,8 +446,8 @@ a {
   width: 100%;
   font-family: var(--mono);
   font-size: 0.82rem;
-  color: #c7f0ff;
-  background: #0a1526;
+  color: #dbe6ef;
+  background: #0a0e13;
   border: 1px solid var(--borda);
   border-radius: 8px;
   padding: 10px 12px;
@@ -504,8 +557,8 @@ pre.json {
   font-family: var(--mono);
   font-size: 0.79rem;
   line-height: 1.5;
-  color: #b8e6c9;
-  background: #08111f;
+  color: #d6e3ec;
+  background: #0a0e13;
   border: 1px solid var(--borda);
   border-radius: var(--raio);
   padding: 14px;
@@ -516,7 +569,7 @@ pre.json {
 }
 
 pre.json .chave {
-  color: #7dd3fc;
+  color: var(--cod-chave);
 }
 
 .resposta-erro {

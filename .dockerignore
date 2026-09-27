@@ -8,3 +8,7 @@ docs
 *.md
 *.pdf
 *.txt
+playwright.config.js
+test-results
+playwright-report
+extract_pdf.py

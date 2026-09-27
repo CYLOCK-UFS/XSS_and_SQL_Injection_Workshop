@@ -98,7 +98,11 @@ function montarControleModo(alvo) {
 }
 
 function marcarModoAtivo(modo) {
-  for (const botao of document.querySelectorAll('.modo-opcao')) {
+  // Anotacao apenas para o `tsc --checkJs`: `querySelectorAll` devolve
+  // `Element`, e `dataset` existe em `HTMLElement`. Nada muda em runtime.
+  for (const botao of /** @type {NodeListOf<HTMLElement>} */ (
+    document.querySelectorAll('.modo-opcao')
+  )) {
     botao.setAttribute('aria-pressed', String(botao.dataset.modo === modo));
   }
 }
@@ -157,8 +161,17 @@ export function preencherTexto(elemento, texto) {
  * precisa estar sem quebras de linha, porque e lido via textContent.
  */
 function montarRoteiros() {
-  for (const bloco of document.querySelectorAll('.payload[data-exemplo]')) {
-    const alvo = document.querySelector(bloco.dataset.alvo);
+  // Anotacao apenas para o `tsc --checkJs`: sem ela `bloco` e `Element` e o
+  // `dataset.alvo` abaixo seria reportado como propriedade inexistente.
+  for (const bloco of /** @type {NodeListOf<HTMLElement>} */ (
+    document.querySelectorAll('.payload[data-exemplo]')
+  )) {
+    // Todo `data-alvo` do laboratorio aponta para um campo de texto (textarea
+    // no ChefLab, input no FinBank), e `value` so existe nos subtipos de
+    // formulario -- por isso o cast, e nao `HTMLElement` generico.
+    const alvo = /** @type {HTMLTextAreaElement | HTMLInputElement} */ (
+      document.querySelector(bloco.dataset.alvo)
+    );
     if (!alvo) {
       continue;
     }

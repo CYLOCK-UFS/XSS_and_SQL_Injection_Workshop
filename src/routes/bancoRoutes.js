@@ -9,18 +9,41 @@ import {
 const router = Router();
 
 /**
+ * Le um parametro de query como texto.
+ *
+ * O Express 5 usa o parser `simple`, que monta um ARRAY quando o mesmo
+ * parametro aparece mais de uma vez (?cidade=A&cidade=B). Sem esta
+ * normalizacao o array chegaria ao repository: no modo vuln a interpolacao
+ * viraria "WHERE cidade = 'A,B'" e no modo safe o placeholder receberia um
+ * array, com resultado silenciosamente errado nos dois casos. A entrada de
+ * qualquer cenario e um unico valor, entao qualquer coisa que nao seja string
+ * e tratada como ausente.
+ *
+ * A guarda tambem cobre a notacao de colchetes (?cidade[x]=A). Nesse caso o
+ * parser `simple` cria a chave literal "cidade[x]" e req.query.cidade fica
+ * undefined, mas um switch futuro para `query parser: 'extended'` faria o
+ * parametro virar objeto. As duas situacoes colapsam no mesmo resultado.
+ */
+function textoUnico(valor) {
+  if (typeof valor !== 'string') {
+    return '';
+  }
+  return valor;
+}
+
+/**
  * Cenario 1 - SQLi UNION (DAS 4.1).
  * GET /banco/agencias?cidade=<cidade>
  * A query string carrega apenas o parametro do cenario; o modo vem do cookie.
  */
 router.get('/agencias', async (req, res) => {
-  const cidade = req.query.cidade;
+  const cidade = textoUnico(req.query.cidade);
   const agencias = await listarAgencias(cidade, { labMode: req.labMode });
   const cidades = await listarCidades();
 
   res.json({
     modo: req.labMode,
-    filtro: { cidade: cidade ?? '' },
+    filtro: { cidade },
     cidades,
     total: agencias.length,
     agencias,
@@ -33,7 +56,7 @@ router.get('/agencias', async (req, res) => {
  * No modo vuln o erro do MySQL chega ao cliente; no modo safe, nao.
  */
 router.get('/extrato', async (req, res) => {
-  const idConta = req.query.id_conta ?? '';
+  const idConta = textoUnico(req.query.id_conta);
   const lancamentos = await buscarExtrato(idConta, { labMode: req.labMode });
 
   res.json({
@@ -51,7 +74,7 @@ router.get('/extrato', async (req, res) => {
  * modos para que o conteudo seja o unico canal de resposta.
  */
 router.get('/noticia', async (req, res) => {
-  const id = req.query.id ?? '';
+  const id = textoUnico(req.query.id);
 
   let noticia = null;
   try {
@@ -80,3 +103,4 @@ router.get('/noticia', async (req, res) => {
 });
 
 export default router;
+

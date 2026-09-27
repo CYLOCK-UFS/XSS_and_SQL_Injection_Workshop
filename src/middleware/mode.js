@@ -23,6 +23,23 @@ export function normalizeLabMode(value) {
   return isValidLabMode(value) ? value : DEFAULT_LAB_MODE;
 }
 
+/**
+ * Grava o cookie que carrega o modo do laboratorio.
+ *
+ * `httpOnly: true` e o ponto que interessa na aula, porque o laboratorio tem
+ * um XSS armazenado funcional: se este cookie fosse legivel por JavaScript,
+ * o payload da pagina do ChefLab poderia ler o modo e reescreve-lo, e o
+ * atacante escolheria o modo `vuln` sozinho, sem clicar em nada.
+ *
+ * E a razao de o modo NAO estar em header, em query string ou em variavel
+ * global: `req.labMode` e lido no servidor, e um cookie HttpOnly nao volta
+ * para o documento por `document.cookie`.
+ *
+ * Nao ha `secure: true` de proposito -- o laboratorio roda em
+ * `http://127.0.0.1`, e um cookie `Secure` seria descartado pelo navegador em
+ * pagina http, tirando o seletor de modo da apresentacao. Em aplicacao real
+ * servida por TLS, `secure: true` e obrigatorio e faz parte do mesmo raciocinio.
+ */
 export function setLabModeCookie(res, mode) {
   res.cookie(LAB_MODE_COOKIE, mode, {
     path: '/',
