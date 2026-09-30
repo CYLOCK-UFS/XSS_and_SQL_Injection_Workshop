@@ -193,4 +193,33 @@ describe('erro de rota assincrona chega ao errorHandler', () => {
     assert.equal(corpo.includes('pool'), false);
     assert.equal(corpo.includes('ECONNREFUSED'), false);
   });
+
+  /**
+   * O contraponto do caso anterior, e o que fecha a assimetria entre os modos.
+   *
+   * A supressao de erro de /banco/noticia existe para o ORACULO do cenario 3, e
+   * o oraculo e uma propriedade do modo VULNERAVEL: e la que a entrada pode
+   * virar sintaxe e transformar um erro de parser em resposta. No modo seguro a
+   * entrada nem chega ao SQL -- o id passa por validacao de formato antes da
+   * consulta --, entao uma falha ali e infraestrutura: pool esgotado, MySQL fora
+   * do ar, bug de verdade.
+   *
+   * Devolver 404 nesse caso e a pior resposta possivel, porque 404 e
+   * exatamente o sinal que o ataque le como "a condicao injetada e falsa". Um
+   * MySQL caido durante a apresentacao viraria "o oraculo parou de responder",
+   * e ninguem saberia que o problema era o banco.
+   *
+   * O pool ja foi encerrado pelo caso anterior, que fica antes de proposito.
+   */
+  it('modo seguro: queda de banco em /banco/noticia vira 500, e nao um 404 mentiroso', async () => {
+    const resposta = await noModo(LAB_MODE_SAFE, 'get', '/banco/noticia?id=1');
+
+    assert.equal(resposta.status, 500);
+    assert.equal(resposta.body.erro, 'Erro interno no servidor.');
+    assert.equal(resposta.body.detalhes, undefined);
+
+    const corpo = JSON.stringify(resposta.body);
+    assert.equal(corpo.includes('pool'), false);
+    assert.equal(corpo.includes('closed'), false);
+  });
 });

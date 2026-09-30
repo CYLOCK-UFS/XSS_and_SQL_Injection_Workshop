@@ -12,6 +12,18 @@ Base: DAS v2.1 + lacunas identificadas pela equipe.
 
 Segurança: ambiente acadêmico isolado, somente dados sintéticos, sem exposição pública.
 
+## Revisão v2.3 (correções de consistência sobre a v2.2)
+
+O número de versão do título permanece v2.2 para não invalidar as referências "DAS v2.2" espalhadas nos comentários do código-fonte. Esta revisão corrige, no próprio texto, os pontos em que o documento divergia da implementação entregue:
+
+- §2: a stack de frontend é HTML5 + CSS próprio (src/public/css/lab.css) + JS, sem Tailwind.
+- §4.3: a supressão de erros de /banco/noticia vale somente no modo vulnerável (é o que mantém o oráculo 200/404 exato); no modo seguro uma falha real de banco sobe como 500, para não ser lida como "condição falsa".
+- §4.4: são dois sinks de innerHTML no modo vulnerável — texto_comentario e nome_autor —, ambos neutralizados por textContent no modo seguro.
+- §7: a resposta de /api/reset é 200 com {ok, message, tabelas}; a restrição "não expor detalhes de banco" cobre erro de SQL, schema, credencial e stack, e não a contagem operacional de tabelas nem o campo banco de /api/health.
+- §9: a árvore de pastas passa a listar src/app.js e src/types/.
+
+O PDF anexo é o export v2.2 e precede estas correções; este .txt é a fonte corrigida.
+
 ## 1. Escopo e arquitetura
 
 O laboratório mantém uma aplicação monolítica modular com Node.js + Express + mysql2 e MySQL 8.0. FinBank ocupa /banco/* e demonstra três cenários de SQL Injection; ChefLab ocupa /receitas/* e demonstra XSS armazenado. A seleção do modo é controlada por cookie, e não pela URL das rotas de ataque.
@@ -20,7 +32,7 @@ O laboratório mantém uma aplicação monolítica modular com Node.js + Express
 
 | Camada | Tecnologia | Contrato |
 | --- | --- | --- |
-| Frontend | HTML5 + CSS/Tailwind + JS | Interfaces FinBank/ChefLab. |
+| Frontend | HTML5 + CSS próprio + JS | Interfaces FinBank/ChefLab. Sem Tailwind: a folha é escrita à mão em src/public/css/lab.css. |
 | Servidor | Node.js + Express | Rotas, middleware e erros. |
 | Acesso a dados | mysql2 | Pool/conexões e queries. |
 | Banco | MySQL 8.0 | Schema lab_palestra. |
@@ -58,9 +70,9 @@ PAGINA 2 de 6
 
 4.2 /banco/extrato Modo vulnerável: erro didático pode ser mostrado via err.sqlMessage. Modo safe: log interno e mensagem genérica.
 
-4.3 /banco/noticia Oráculo de conteúdo: notícia versus 404. Erros suprimidos. Safe usa validação complementar e parametrização.
+4.3 /banco/noticia Oráculo de conteúdo: notícia versus 404. No modo vulnerável os erros de banco são suprimidos, para que o status seja o único canal de resposta; no modo seguro a entrada é validada antes da consulta e uma falha real de banco sobe como 500, em vez de virar um 404 que mascara indisponibilidade. Safe usa validação complementar e parametrização.
 
-4.4 /receitas INSERT parametrizado; vulnerabilidade na saída com innerHTML. Safe usa textContent ou sanitização.
+4.4 /receitas INSERT parametrizado; a vulnerabilidade está na saída, e há dois sinks de innerHTML no modo vulnerável: texto_comentario e nome_autor. Safe usa textContent nos dois.
 
 ## 5. Dicionário do banco de dados
 
@@ -105,7 +117,7 @@ A documentação oficial do MySQL 8.0 registra que locator XPath inválido gera 
 | Comentários | Restaurar os dois comentários originais. |
 | Outros dados | Restaurar registros-base de agencias, cartoes_credito, administradores, clientes, extratos e noticias caso tenham sido alterados durante a demonstração. |
 | Restrição | Somente ambiente local/laboratório; não publicar a rota em ambiente externo. |
-| Resposta | 204 ou JSON simples de sucesso; não expor detalhes de banco. |
+| Resposta | 200 com JSON simples {ok, message, tabelas}; nunca expor erro de SQL, schema, credencial ou stack. As chaves operacionais (tabelas, e o campo banco de /api/health) são telemetria do laboratório local e não violam esta restrição. |
 
 ==============================================================================
 PAGINA 4 de 6
@@ -137,6 +149,7 @@ projeto-palestra-seguranca/
 ├── .gitignore
 ├── database/init.sql
 ├── src/server.js
+├── src/app.js
 ├── src/config/database.js
 ├── src/middleware/mode.js
 ├── src/middleware/errorHandler.js
@@ -145,8 +158,12 @@ projeto-palestra-seguranca/
 ├── src/routes/labRoutes.js
 ├── src/repositories/bancoRepository.js
 ├── src/repositories/receitasRepository.js
+├── src/types/
 ├── src/public/banco/
 ├── src/public/receitas/
+├── src/public/css/
+├── src/public/js/
+├── src/public/img/
 ├── tests/
 └── package.json
 

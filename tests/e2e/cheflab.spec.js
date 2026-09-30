@@ -169,4 +169,37 @@ test.describe('Cenario 4 - XSS armazenado no ChefLab', () => {
     await expect(comentario.locator('strong img')).toHaveCount(0);
     await expect(comentario.locator('strong')).toHaveText(PAYLOAD_AUTOR);
   });
+
+  /**
+   * Regressao de fuso horario.
+   *
+   * `data_postagem` e o unico DATETIME do laboratorio. O modo como ele chega ao
+   * navegador ja mudou uma vez e o efeito era silencioso e dependente do
+   * ambiente: com o mysql2 devolvendo um objeto `Date`, a hora exibida dependia
+   * do fuso do processo Node e do fuso do navegador -- que no fluxo oficial nao
+   * sao o mesmo (container em UTC, projetor da plateia em UTC-3). O mesmo seed
+   * aparecia 18:30 num lugar e 15:30 noutro, conforme o laboratorio tivesse
+   * sido iniciado com Docker ou com `npm start` na maquina.
+   *
+   * O contrato agora e textual: a pagina mostra o que esta gravado, e o
+   * atributo `datetime` fica na forma do HTML. Este teste roda nos DOIS modos
+   * porque os dois renderizadores formatam a data em caminhos distintos.
+   */
+  test('as datas sao o DATETIME gravado, sem deslocamento de fuso', async ({ page }) => {
+    // O beforeEach ja restoreu os dois comentarios do seed, e nada e gravado
+    // aqui: 2024-01-10 18:30:00 e 2024-01-11 19:45:00, em database/init.sql.
+    for (const modo of ['vuln', 'safe']) {
+      await abrir(page, modo);
+
+      const tempos = page.locator(`${COMENTARIOS} time`);
+
+      // A lista vem em data_postagem DESC, entao a mais recente vem primeiro.
+      await expect(tempos.nth(0)).toHaveText('11/01/2024, 19:45');
+      await expect(tempos.nth(1)).toHaveText('10/01/2024, 18:30');
+
+      // O atributo usa o separador `T` do HTML, nao o espaco do MySQL.
+      await expect(tempos.nth(0)).toHaveAttribute('datetime', '2024-01-11T19:45:00');
+      await expect(tempos.nth(1)).toHaveAttribute('datetime', '2024-01-10T18:30:00');
+    }
+  });
 });

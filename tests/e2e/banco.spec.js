@@ -46,10 +46,13 @@ test.describe('SQLi - o oraculo 200/404 do cenario 3', () => {
 
   /**
    * Malformado (DAS 4.3.2): a aspa fecha a string e o resto vira erro de
-   * sintaxe. O MySQL estoura em ambos os modos, e por isso a rota suprime o
-   * erro e devolve 404 em vez de 500: se o modo seguro devolvesse 500, o
-   * oracuto viraria canal de fuga de informacao, que e justamente o que a
-   * rota existe para fechar.
+   * sintaxe se chegar ao MySQL. Por caminhos diferentes, os dois modos devolvem
+   * 404 em vez de 500.
+   *
+   * No modo vulneravel a rota suprime o erro de proposito, para que o oraculo
+   * continue sendo so 200/404. No modo seguro a aspa nem chega ao SQL: o id
+   * passa por validacao de formato antes da consulta e cai no 404 de "nao
+   * encontrada". Em nenhum dos casos o oraculo vira canal de fuga de informacao.
    */
   test("a aspa solta produz 404, e nao 500, nos dois modos", async ({ request }) => {
     const malformado = await request.get(`/banco/noticia?id=${encodeURIComponent("'")}`);
@@ -114,6 +117,12 @@ test.describe('SQLi - o oraculo 200/404 do cenario 3', () => {
    * tem como ser verdadeiro, porque nenhuma linha tem id vazio.
    */
   test('a extracao caractere a caractere reconstroi o titulo', async ({ request }) => {
+    // A extracao faz ate ~3.100 requisicoes em serie (um alfabeto de ~95
+    // caracteres por posicao do titulo). O timeout padrao de 30s nao cobre esse
+    // volume numa maquina carregada, e o teste precisa terminar com o diff da
+    // assertao final, nao com um timeout estourando no meio do laco.
+    test.setTimeout(180_000);
+
     const ALFABETO =
       ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
 

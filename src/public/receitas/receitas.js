@@ -18,6 +18,7 @@ import {
   formatarData,
   iniciarLaboratorio,
   mostrarJson,
+  paraDataTime,
   preencherTexto,
 } from '../js/lab.js';
 
@@ -162,7 +163,7 @@ function renderizarComInnerHTML(comentario) {
   item.innerHTML = `
     <p class="comentario__autor">
       <strong>${comentario.nome_autor}</strong>
-      <time datetime="${comentario.data_postagem}">${formatarData(
+      <time datetime="${paraDataTime(comentario.data_postagem)}">${formatarData(
         comentario.data_postagem,
       )}</time>
     </p>
@@ -193,7 +194,7 @@ function renderizarComTextContent(comentario) {
   autor.textContent = comentario.nome_autor;
 
   const tempo = document.createElement('time');
-  tempo.dateTime = comentario.data_postagem;
+  tempo.dateTime = paraDataTime(comentario.data_postagem);
   tempo.textContent = formatarData(comentario.data_postagem);
 
   cabecalho.append(autor, ' ', tempo);

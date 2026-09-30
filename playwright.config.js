@@ -1,43 +1,24 @@
-import { defineConfig, devices } from '@playwright/test';
+import { chromium, defineConfig, devices } from '@playwright/test';
 import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { homedir } from 'node:os';
-import path from 'node:path';
-
-const require = createRequire(import.meta.url);
 
 /**
  * Verifica se o Chromium empacotado pelo Playwright ja esta no cache.
  *
- * A revisao e lida de playwright-core/browsers.json em vez de fixada no codigo:
- * fixar a revisao transformaria este arquivo em mais um lugar a atualizar a cada
- * upgrade do Playwright, e um erro ali faria o suite cair silenciosamente no
- * navegador do sistema sem ninguem perceber.
+ * A pergunta e feita ao proprio Playwright (`chromium.executablePath()`), que
+ * resolve o cache correto do sistema -- `%LOCALAPPDATA%\ms-playwright` no
+ * Windows, `~/Library/Caches/ms-playwright` no macOS, `~/.cache/ms-playwright`
+ * no Linux -- e ja honra `PLAYWRIGHT_BROWSERS_PATH`. A revisao nunca e fixada
+ * aqui, entao um upgrade do Playwright nao deixa este arquivo desatualizado.
+ *
+ * Nao use `require('playwright-core/browsers.json')` para descobrir a revisao:
+ * o Playwright moderno fechou os subpaths do pacote, o `require` lanca
+ * ERR_PACKAGE_PATH_NOT_EXPORTED e a deteccao responde `false` para sempre --
+ * o suite cai calado no navegador do sistema mesmo com o Chromium instalado,
+ * que e exatamente a falha que esta funcao existe para evitar.
  */
 function chromiumEmpacotadoDisponivel() {
   try {
-    const catalogos = require('playwright-core/browsers.json').browsers;
-    const chromium = catalogos.find((navegador) => navegador.name === 'chromium');
-    if (!chromium) {
-      return false;
-    }
-
-    for (const [diretorio, sufixo] of [
-      ['chromium', ''],
-      ['chromium_headless_shell', ''],
-    ]) {
-      const alvo = path.join(
-        homedir(),
-        'AppData',
-        'Local',
-        'ms-playwright',
-        `${diretorio}-${chromium.revision}${sufixo}`,
-      );
-      if (existsSync(alvo)) {
-        return true;
-      }
-    }
-    return false;
+    return existsSync(chromium.executablePath());
   } catch {
     return false;
   }

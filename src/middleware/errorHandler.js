@@ -12,6 +12,27 @@ export function notFoundHandler(req, res) {
   res.status(404).json({ erro: 'Rota nao encontrada.' });
 }
 
+/**
+ * Erros de ENTRADA, com o status e a mensagem que fazem sentido para cada um.
+ *
+ * Nenhum destes e erro de banco: nenhuma consulta chegou a ser executada, e
+ * portanto nao existe detalhe de SQL para revelar -- nem no modo vulneravel.
+ * O que eles medem e o corpo da requisicao, e por isso que o DAS manda usar
+ * "erro generico" (secao 8) sem que isso precise virar 500.
+ *
+ * A chave e o `err.type` que o body-parser do Express 5 atribui. O status do
+ * objeto http-errors e generico demais para ser a fonte da verdade: o
+ * `entity.parse.failed` e 400, o `entity.too.large` e 413, e so o type diz
+ * QUAL dos dois aconteceu.
+ */
+const ERROS_DE_ENTRADA = {
+  'entity.parse.failed': [400, 'Corpo JSON invalido.'],
+  'entity.too.large': [413, 'Corpo da requisicao maior que o limite de 16kb.'],
+  'encoding.unsupported': [415, 'Codificacao de conteudo nao suportada.'],
+  'charset.unsupported': [415, 'Charset do corpo nao suportado.'],
+  'request.aborted': [400, 'Requisicao abortada antes de ser lida.'],
+};
+
 export function errorHandler(err, req, res, next) {
   if (res.headersSent) {
     next(err);
@@ -38,19 +59,33 @@ export function errorHandler(err, req, res, next) {
   }
 
   /**
-   * Corpo JSON malformado e erro de ENTRADA, nao de banco: nenhuma consulta foi
-   * executada, entao nao existe detalhe de SQL para revelar nem para o modo
-   * vulneravel. Devolve 400 nos dois modos. O valor de mode invalido (ex.:
-   * {"mode":"banana"}) nao cai aqui: esse e tratado por normalizeLabMode, que
-   * assume o modo padrao do laboratorio.
+   * Erro de entrada, e nao de banco: devolve o status que a falha merece, nos
+   * dois modos, e SEM o bloco `detalhes`.
+   *
+   * Isto e consequencia direta do DAS secao 8 ("erro generico"), e nao uma
+   * exigencia extra: antes desta distincao, um corpo maior que 16kb -- o
+   * `limit` do express.json em src/app.js -- caia no ramo de banco e voltava
+   * como HTTP 500, no modo seguro, ou como HTTP 500 com `detalhes.sqlMessage`
+   * preenchido pela mensagem do body-parser, no modo vulneravel. O laboratorio
+   * chegava a chamar "detalhe do banco" de uma mensagem que nunca teve nada a
+   * ver com o banco, o que e o tipo de vazamento que faz a aula mentir.
    */
-  const erroDeEntrada =
-    err.type === 'entity.parse.failed' ||
-    (err instanceof SyntaxError &&
-      /** @type {SyntaxError & { status?: number }} */ (err).status === 400);
-
+  const erroDeEntrada = ERROS_DE_ENTRADA[/** @type {string} */ (err.type)];
   if (erroDeEntrada) {
-    res.status(400).json({ erro: 'Corpo JSON invalido.' });
+    res.status(erroDeEntrada[0]).json({ erro: erroDeEntrada[1] });
+    return;
+  }
+
+  /**
+   * Qualquer outro 4xx. Um SyntaxError lancado fora do body-parser, por
+   * exemplo, chega aqui com `status: 400` e sem `type` reconhecivel.
+   */
+  const status = Number(
+    /** @type {{ status?: number, statusCode?: number }} */ (err).status ??
+      /** @type {{ status?: number, statusCode?: number }} */ (err).statusCode,
+  );
+  if (Number.isInteger(status) && status >= 400 && status < 500) {
+    res.status(status).json({ erro: 'Requisicao invalida.' });
     return;
   }
 

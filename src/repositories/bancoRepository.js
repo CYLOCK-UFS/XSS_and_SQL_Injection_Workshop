@@ -1,4 +1,4 @@
-import { pool } from '../config/database.js';
+import { aguardarResetEmAndamento, pool } from '../config/database.js';
 import { LAB_MODE_VULN } from '../middleware/mode.js';
 
 /**
@@ -20,7 +20,8 @@ const AGENCIAS_SQL = `SELECT ${AGENCIAS_COLUNAS} FROM agencias`;
  *
  * Em producao ninguem passa nada: todas as rotas chamam `listarAgencias(cidade,
  * { labMode })` e recebem o pool. A razao do parametro e permitir que
- * tests/unit/lab.test.js injete um executor falso e verifique a parte que
+ * tests/unit/bancoRepository.test.js injete um executor falso e verifique a
+ * parte que
  * importa para a aula -- que o modo vuln monta texto e o modo safe usa
  * placeholder -- sem subir MySQL, sem seed e sem depender da rede.
  *
@@ -38,6 +39,19 @@ const CIDADES_DISPONIVEIS_SQL =
   'SELECT DISTINCT cidade FROM agencias ORDER BY cidade';
 
 /**
+ * Toda LEITURA do laboratorio espera o reset em andamento antes de tocar o banco.
+ *
+ * O `executor` injetado pelos testes de unidade nao precisa da espera: a
+ * espera e sobre o estado do banco, e o duble nao tem estado nenhum. Por isso
+ * ela fica aqui, e nao dentro de um wrapper do pool -- que teria de ser
+ * furado do mesmo jeito, so que em outro lugar.
+ */
+async function ler(executor, consultar) {
+  await aguardarResetEmAndamento();
+  return consultar(executor);
+}
+
+/**
  * Cenario 1 - SQLi UNION (DAS 4.1).
  * Payloads previstos (query string da pagina):
  *   ' UNION SELECT titular, numero_cartao, cvv, validade FROM cartoes_credito --
@@ -48,32 +62,36 @@ const CIDADES_DISPONIVEIS_SQL =
  * @returns {Promise<LinhasSql>}
  */
 export async function listarAgencias(cidade, { labMode, executor = executorPadrao }) {
-  if (cidade === undefined || cidade === null || cidade === '') {
-    const [rows] = await executor.execute(
-      `${AGENCIAS_SQL} ORDER BY nome_agencia`,
+  return ler(executor, async (exec) => {
+    if (cidade === undefined || cidade === null || cidade === '') {
+      const [rows] = await exec.execute(
+        `${AGENCIAS_SQL} ORDER BY nome_agencia`,
+      );
+      return /** @type {LinhasSql} */ (rows);
+    }
+
+    if (labMode === LAB_MODE_VULN) {
+      const sql = `${AGENCIAS_SQL} WHERE cidade = '${cidade}' ORDER BY nome_agencia`;
+      const [rows] = await exec.query(sql);
+      return /** @type {LinhasSql} */ (rows);
+    }
+
+    const [rows] = await exec.execute(
+      `${AGENCIAS_SQL} WHERE cidade = ? ORDER BY nome_agencia`,
+      [cidade],
     );
     return /** @type {LinhasSql} */ (rows);
-  }
-
-  if (labMode === LAB_MODE_VULN) {
-    const sql = `${AGENCIAS_SQL} WHERE cidade = '${cidade}' ORDER BY nome_agencia`;
-    const [rows] = await executor.query(sql);
-    return /** @type {LinhasSql} */ (rows);
-  }
-
-  const [rows] = await executor.execute(
-    `${AGENCIAS_SQL} WHERE cidade = ? ORDER BY nome_agencia`,
-    [cidade],
-  );
-  return /** @type {LinhasSql} */ (rows);
+  });
 }
 
 /** @returns {Promise<string[]>} */
 export async function listarCidades({ executor = executorPadrao } = {}) {
-  const [rows] = await executor.execute(CIDADES_DISPONIVEIS_SQL);
-  return /** @type {string[]} */ (
-    /** @type {LinhasSql} */ (rows).map((row) => row.cidade)
-  );
+  return ler(executor, async (exec) => {
+    const [rows] = await exec.execute(CIDADES_DISPONIVEIS_SQL);
+    return /** @type {string[]} */ (
+      /** @type {LinhasSql} */ (rows).map((row) => row.cidade)
+    );
+  });
 }
 
 /**
@@ -88,17 +106,19 @@ export async function listarCidades({ executor = executorPadrao } = {}) {
  * @returns {Promise<LinhasSql>}
  */
 export async function buscarExtrato(idConta, { labMode, executor = executorPadrao }) {
-  if (labMode === LAB_MODE_VULN) {
-    const sql = `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = '${idConta}' ORDER BY data_lancamento`;
-    const [rows] = await executor.query(sql);
-    return /** @type {LinhasSql} */ (rows);
-  }
+  return ler(executor, async (exec) => {
+    if (labMode === LAB_MODE_VULN) {
+      const sql = `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = '${idConta}' ORDER BY data_lancamento`;
+      const [rows] = await exec.query(sql);
+      return /** @type {LinhasSql} */ (rows);
+    }
 
-  const [rows] = await executor.execute(
-    `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = ? ORDER BY data_lancamento`,
-    [idConta],
-  );
-  return /** @type {LinhasSql} */ (rows);
+    const [rows] = await exec.execute(
+      `SELECT ${EXTRATO_COLUNAS} FROM extratos WHERE id_conta = ? ORDER BY data_lancamento`,
+      [idConta],
+    );
+    return /** @type {LinhasSql} */ (rows);
+  });
 }
 
 /**
@@ -115,21 +135,23 @@ export async function buscarExtrato(idConta, { labMode, executor = executorPadra
  * @returns {Promise<LinhaSql | null>}
  */
 export async function buscarNoticia(id, { labMode, executor = executorPadrao }) {
-  if (labMode === LAB_MODE_VULN) {
-    const sql = `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = '${id}'`;
-    const [rows] = await executor.query(sql);
+  return ler(executor, async (exec) => {
+    if (labMode === LAB_MODE_VULN) {
+      const sql = `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = '${id}'`;
+      const [rows] = await exec.query(sql);
+      const linhas = /** @type {LinhasSql} */ (rows);
+      return linhas[0] || null;
+    }
+
+    if (!/^\d{1,20}$/.test(String(id))) {
+      return null;
+    }
+
+    const [rows] = await exec.execute(
+      `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = ?`,
+      [id],
+    );
     const linhas = /** @type {LinhasSql} */ (rows);
     return linhas[0] || null;
-  }
-
-  if (!/^\d{1,20}$/.test(String(id))) {
-    return null;
-  }
-
-  const [rows] = await executor.execute(
-    `SELECT ${NOTICIA_COLUNAS} FROM noticias WHERE id = ?`,
-    [id],
-  );
-  const linhas = /** @type {LinhasSql} */ (rows);
-  return linhas[0] || null;
+  });
 }

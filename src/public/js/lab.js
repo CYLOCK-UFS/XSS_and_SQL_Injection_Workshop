@@ -117,13 +117,73 @@ const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'UTC',
 });
 
-/** DATETIME do MySQL chega como string ISO no JSON; tolera valor invalido. */
+/**
+ * Componentes de data na forma `AAAA-MM-DD HH:MM:SS` (o que o MySQL devolve
+ * para DATETIME com `dateStrings: true`) ou `AAAA-MM-DDTHH:MM:SS`.
+ *
+ * O grupo `(?:Z|[+-]\d{2}:?\d{2})` no fim existe para tornar a regex ancorada
+ * de verdade: sem ele, `A` casaria com o comeco de `AAAA` e o primeiro grupo
+ * seria sempre `A`.
+ */
+const COMPONENTES_DATA =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/;
+
+/**
+ * Extrai os componentes de data e monta um instante ancorado em UTC.
+ *
+ * A ancora em UTC e o que torna a formatacao correta sem fuso: os componentes
+ * sao lidos de volta com `timeZone: 'UTC'`, entao o valor impresso e sempre o
+ * que estava escrito no DATETIME. Nao ha conversao de fuso no caminho, e
+ * portanto nao existe o caso em que a hora exibida depende do lugar de onde a
+ * pagina foi aberta.
+ *
+ * @param {string} valor
+ * @returns {Date | null} null quando o texto nao e uma data reconhecivel.
+ */
+export function instanteDeDataHora(valor) {
+  const partes = String(valor).trim().match(COMPONENTES_DATA);
+  if (!partes) {
+    return null;
+  }
+
+  return new Date(
+    Date.UTC(
+      Number(partes[1]),
+      Number(partes[2]) - 1,
+      Number(partes[3]),
+      Number(partes[4]),
+      Number(partes[5]),
+      Number(partes[6] ?? 0),
+    ),
+  );
+}
+
+/**
+ * DATETIME do MySQL chega como texto `AAAA-MM-DD HH:MM:SS`: sao componentes de
+ * parede, nao um instante. Tolera valor invalido.
+ */
 export function formatarData(valor) {
   if (!valor) {
     return '';
   }
-  const data = new Date(valor);
-  return Number.isNaN(data.getTime()) ? String(valor) : DATA_HORA.format(data);
+
+  const instante = instanteDeDataHora(valor);
+  return instante === null ? String(valor) : DATA_HORA.format(instante);
+}
+
+/**
+ * Normaliza o valor para o atributo `datetime` de um <time>.
+ *
+ * A especificacao HTML aceita `AAAA-MM-DDTHH:MM:SS`, com o separador `T`, e
+ * nao a forma do MySQL, que usa espaco. Sem esta conversao o atributo fica
+ * invalido: o navegador costuma aceitar assim mesmo, mas a maquina de estados
+ * do HTML nao reconhece o valor.
+ *
+ * @param {string} valor
+ * @returns {string}
+ */
+export function paraDataTime(valor) {
+  return String(valor ?? '').replace(' ', 'T');
 }
 
 /**

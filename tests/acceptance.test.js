@@ -50,6 +50,27 @@ function comPayload(valor) {
   return encodeURIComponent(valor);
 }
 
+/**
+ * Dispara a requisicao e devolve a resposta, sem `await` no meio.
+ *
+ * O objeto do supertest so comeca a enviar quando alguem chama `then` -- e o
+ * `await` do chamador e justamente o que dispara a requisicao. Para provar uma
+ * CORRIDA, o reset precisa estar em voo enquanto a proxima requisicao ja
+ * parte, e por isso a requisicao e iniciada por `end()` em vez de ser esperada
+ * em sequencia.
+ */
+function disparar(requisicao) {
+  return new Promise((resolve, reject) => {
+    requisicao.end((erro, resposta) => {
+      if (erro) {
+        reject(erro);
+        return;
+      }
+      resolve(resposta);
+    });
+  });
+}
+
 before(async () => {
   await waitForDatabase();
   // Garante estado inicial antes das verificacoes, inclusive se a suite for
@@ -498,7 +519,7 @@ describe('T06 - /banco/noticia: oraculo noticia x 404', () => {
     assert.equal(falso.status, 404);
   });
 
-  it('erros de banco sao suprimidos: o oraculo e so o status', async () => {
+  it('no modo vulneravel os erros de banco sao suprimidos: o oraculo e so o status', async () => {
     const resposta = await noModo('vuln', 'get', '/banco/noticia?id=');
 
     assert.equal(resposta.status, 404);
@@ -561,6 +582,51 @@ describe('T07 - /receitas: o INSERT e parametrizado nos dois modos', () => {
       .post('/receitas')
       .send({ nome_autor: 'a'.repeat(81), texto_comentario: 'x' })
       .expect(400);
+  });
+
+  it('corpo maior que o limite do servidor volta 413, e nao 500 de banco', async () => {
+    /**
+     * `express.json({ limit: '16kb' })` em src/app.js e o limite do CORPO, e
+     * ele e acionado antes de qualquer validacao de campo: um comentario
+     * gigante nem chega ao LIMITE_TEXTO nem ao INSERT, porque o corpo e
+     * recusado enquanto ainda esta sendo lido.
+     *
+     * O que este teste trava e a TRADUCAO do erro. O erro de entrada e medido
+     * em bytes, nao em SQL, entao ele nao pode ser respondido como "Erro ao
+     * consultar o banco de dados" -- muito menos virando 500 com o bloco
+     * `detalhes` no modo vulneravel, que e a unica coisa que aquele bloco
+     * deveria conter.
+     */
+    const gigante = 'a'.repeat(20000);
+
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao
+        .post('/receitas')
+        .send({ nome_autor: 'Chef Teste', texto_comentario: gigante });
+
+      assert.equal(resposta.status, 413, `modo ${modo}`);
+      assert.equal('detalhes' in resposta.body, false, `modo ${modo} vazou detalhe`);
+      assert.match(resposta.body.erro, /16kb/);
+    }
+  });
+
+  it('JSON malformado volta 400 nos dois modos, tambem sem detalhe', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao
+        .post('/api/mode')
+        .set('Content-Type', 'application/json')
+        .send('{"mode":');
+
+      assert.equal(resposta.status, 400, `modo ${modo}`);
+      assert.equal('detalhes' in resposta.body, false, `modo ${modo} vazou detalhe`);
+      assert.equal(resposta.body.erro, 'Corpo JSON invalido.');
+    }
   });
 
   it('a renderizacao vulneravel usa innerHTML e a segura usa textContent', async () => {
@@ -685,6 +751,50 @@ describe('T10 - o reset e serializado', () => {
   });
 });
 
+describe('T10 - o reset serializado tambem protege as leituras', () => {
+  it('uma leitura que chega no meio do reset nao leva "table doesn\'t exist"', async () => {
+    /**
+     * Serializar reset contra reset resolve metade do problema. A outra metade e
+     * o cruzamento: o init.sql faz `DROP TABLE` antes de `CREATE TABLE`, e uma
+     * leitura que entra nessa janela falha com "table doesn't exist" -- no modo
+     * vulneravel, como HTTP 500 com o erro do MySQL no corpo, no meio da
+     * apresentacao, sem ninguem ter clicado em nada.
+     *
+     * Por isso a leitura e disparada de proposito, dentro da janela DROP/CREATE,
+     * e nao por sorte. Enquanto o DROP ainda nao comecou, information_schema
+     * ainda devolve 7 tabelas e qualquer leitura passa trivialmente, sem
+     * exercitar a garantia que se quer provar.
+     */
+    const resetPendente = disparar(api().post('/api/reset'));
+
+    let viuJanela = false;
+    for (let tentativa = 0; tentativa < 400 && !viuJanela; tentativa += 1) {
+      const health = await api().get('/api/health');
+      if (health.body.ok && health.body.tabelas < 7) {
+        viuJanela = true;
+        break;
+      }
+      await new Promise((resolver) => setTimeout(resolver, 5));
+    }
+    assert.equal(
+      viuJanela,
+      true,
+      'o reset terminou antes de abrir a janela DROP/CREATE',
+    );
+
+    // Sem a espera em aguardarResetEmAndamento, esta leitura cai entre o DROP e
+    // o CREATE e volta 500. Com ela, so volta quando o estado voltou a existir.
+    const leitura = await api().get('/banco/agencias?cidade=Sao Paulo');
+    assert.equal(leitura.status, 200);
+    assert.equal(leitura.body.total, 2);
+    assert.equal('detalhes' in leitura.body, false);
+
+    const reset = await resetPendente;
+    assert.equal(reset.status, 200);
+    assert.equal(reset.body.ok, true);
+  });
+});
+
 describe('T10 - os parametros de query sao lidos como texto', () => {
   /**
    * O Express 5 usa o parser `simple`: um parametro repetido vira array
@@ -743,7 +853,7 @@ describe('T10 - os parametros de query sao lidos como texto', () => {
    * o parser do MySQL e a resposta seria 500 em vez do oraculo 200/404.
    *
    * A prova de que o valor e uma string de fato vem do teste de unidade de
-   * buscarNoticia, com executor injetado (tests/unit/lab.test.js).
+   * buscarNoticia, com executor injetado (tests/unit/bancoRepository.test.js).
    */
   it('em /banco/noticia a entrada nao-textual nao quebra o oraculo 200/404', async () => {
     for (const modo of ['vuln', 'safe']) {

@@ -5,6 +5,7 @@ import {
   listarAgencias,
   listarCidades,
 } from '../repositories/bancoRepository.js';
+import { LAB_MODE_VULN } from '../middleware/mode.js';
 
 const router = Router();
 
@@ -70,8 +71,26 @@ router.get('/extrato', async (req, res) => {
 /**
  * Cenario 3 - SQLi inferencial/cega (DAS 4.3).
  * GET /banco/noticia?id=<id>
- * Oraculo: 200 com a noticia ou 404. Erros de banco sao suprimidos nos dois
- * modos para que o conteudo seja o unico canal de resposta.
+ * Oraculo: 200 com a noticia ou 404.
+ *
+ * No modo VULN o erro de banco e suprimido de proposito, para que o conteudo
+ * da noticia seja o unico canal de resposta. E o que torna o cenario 3 um
+ * oraculo de verdade: sem essa supressao, um payload de sintaxe invalida
+ * responderia 500 em vez de 404, e a plateia leria "acertou a condicao" num
+ * erro de parser -- a mesma resposta para a condicao verdadeira e para um
+ * payload quebrado, que e a forma mais barata de quebrar um ataque por inferencia.
+ *
+ * No modo SAFE a supressao e removida de proposito, e o erro volta a ser
+ * erro. Ali a consulta e parametrizada e o id ja passou pela validacao de
+ * formato, entao a entrada nao consegue distorcer a consulta: qualquer falha
+ * aqui e MySQL fora do ar, pool esgotado ou bug de verdade. Reportar isso como
+ * "noticia nao encontrada" seria trocar um diagnostico honesto por um 404 que
+ * mente -- e o 404 e justamente o sinal que o ataque precisa ler. Numa
+ * apresentacao, MySQL caido viraria "o oraculo parou de responder" sem ninguem
+ * saber que o banco tinha parado.
+ *
+ * O DAS (4.3) diz "erros suprimidos" para manter o oraculo exato. Isso e
+ * verdade no modo em que o oraculo existe.
  */
 router.get('/noticia', async (req, res) => {
   const id = textoUnico(req.query.id);
@@ -80,12 +99,17 @@ router.get('/noticia', async (req, res) => {
   try {
     noticia = await buscarNoticia(id, { labMode: req.labMode });
   } catch (error) {
-    console.error(
-      `[lab] erro suprimido em /banco/noticia (modo=${req.labMode}):`,
-      error.code || error.name,
-      '-',
-      error.message,
-    );
+    if (req.labMode === LAB_MODE_VULN) {
+      console.error(
+        `[lab] erro suprimido em /banco/noticia (modo=${req.labMode}):`,
+        error.code || error.name,
+        '-',
+        error.message,
+      );
+      noticia = null;
+    } else {
+      throw error;
+    }
   }
 
   if (!noticia) {

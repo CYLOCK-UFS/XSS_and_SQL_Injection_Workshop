@@ -1,4 +1,4 @@
-import { pool } from '../config/database.js';
+import { aguardarResetEmAndamento, pool } from '../config/database.js';
 
 export const LIMITE_AUTOR = 80;
 export const LIMITE_TEXTO = 2000;
@@ -22,6 +22,7 @@ const INSERIR_SQL =
  * inclusive um `await` esquecido na rota, que viraria um bug de runtime.
  */
 export async function listarComentarios() {
+  await aguardarResetEmAndamento();
   const [rows] = await pool.execute(LISTAR_SQL);
   return /** @type {LinhasSql} */ (rows);
 }
@@ -30,6 +31,11 @@ export async function listarComentarios() {
  * @returns {Promise<{ id: number, nomeAutor: string, textoComentario: string }>}
  */
 export async function inserirComentario({ nomeAutor, textoComentario }) {
+  // O INSERT nao e leitura, mas espera o reset pelo mesmo motivo: sem isso, o
+  // click de "publicar" na aba da plateia cairia no meio do DROP/CREATE de um
+  // reset disparado por outra aba.
+  await aguardarResetEmAndamento();
+
   const [result] = await pool.execute(INSERIR_SQL, [
     nomeAutor,
     textoComentario,
