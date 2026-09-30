@@ -632,7 +632,7 @@ describe('T07 - /receitas: o INSERT e parametrizado nos dois modos', () => {
   it('a renderizacao vulneravel usa innerHTML e a segura usa textContent', async () => {
     const { readFile } = await import('node:fs/promises');
     const codigo = await readFile(
-      new URL('../src/public/receitas/receitas.js', import.meta.url),
+      new URL('../src/public/cheflab/receita.js', import.meta.url),
       'utf8',
     );
 
@@ -871,6 +871,115 @@ describe('T10 - os parametros de query sao lidos como texto', () => {
         );
         assert.equal('detalhes' in resposta.body, false);
       }
+    }
+  });
+});
+
+/* ========================================================================== */
+/* T11 - Leituras de apoio do autoatendimento (DAS v2.3, secao 4)            */
+/* ========================================================================== */
+/*
+ * As duas rotas que existem para o FinBank parecer um banco: a conta que fica
+ * no cabecalho e o mural de comunicados.
+ *
+ * Nao ha cenario de injecao aqui, e o bloco inteiro existe para travar esse
+ * fato. Nao existe versao vulneravel para testar porque nao existe versao
+ * vulneravel: as funcoes do repository dessas leituras nao recebem `labMode`, e
+ * nao ha caminho que monte texto com o id do cliente ou com o filtro do mural.
+ *
+ * O teste de unidade correspondente (tests/unit/bancoRepository.test.js) prova o
+ * `?` no executor injetado; aqui o que se prova e o contrato HTTP.
+ */
+
+describe('T11 - GET /banco/cliente e GET /banco/comunicados', () => {
+  it('a conta do cabecalho responde igual nos dois modos', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao.get('/banco/cliente/CLI001').expect(200);
+      const { cliente } = resposta.body;
+
+      assert.equal(cliente.id_cliente, 'CLI001');
+      assert.equal(cliente.nome, 'Ana Ribeiro');
+      assert.equal(cliente.cpf, '111.111.111-11');
+      assert.equal(cliente.numero_telefone, '(11) 98888-0001');
+      assert.equal(cliente.saldo_conta, 'R$ 12.450,00');
+      assert.equal('detalhes' in resposta.body, false);
+    }
+  });
+
+  /**
+   * O id vai no caminho, e caminho nao se concatena. Uma aspa no lugar do id
+   * tem de dar 404, e nao 500 com detalhe de SQL: o 500 seria justamente a
+   * prova de que a entrada chegou ao parser como texto.
+   */
+  it('id malformado nao vira erro de banco em nenhum dos dois modos', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const ids = ["CLI001' OR '1'='1", 'CLI001\\', '%27', 'CLI999; DROP TABLE clientes'];
+
+      for (const id of ids) {
+        const resposta = await sessao.get(`/banco/cliente/${encodeURIComponent(id)}`);
+        assert.equal(resposta.status, 404, `id=${id} no modo ${modo}`);
+        assert.equal(resposta.body.erro, 'Cliente nao encontrado.');
+        assert.equal('detalhes' in resposta.body, false);
+      }
+    }
+  });
+
+  it('o mural devolve o seed inteiro, sem o corpo do comunicado', async () => {
+    const resposta = await api().get('/banco/comunicados').expect(200);
+
+    assert.equal(resposta.body.total, 8);
+    assert.equal(resposta.body.comunicados.length, 8);
+
+    for (const comunicado of resposta.body.comunicados) {
+      // `conteudo` fica de fora de proposito: no mural entram so titulo e data.
+      // O texto so aparece na pagina do comunicado, que e o cenario 3.
+      assert.deepEqual(Object.keys(comunicado).sort(), [
+        'data_publicacao',
+        'id',
+        'titulo',
+      ]);
+    }
+
+    // Mais recente primeiro: o init.sql vai de 2024-01-05 a 2024-01-14.
+    assert.equal(resposta.body.comunicados[0].id, '8');
+    assert.equal(resposta.body.comunicados.at(-1).id, '1');
+  });
+
+  /**
+   * O mural e a origem dos links de /finbank/noticia. Um id do mural que nao
+   * resolve na rota do cenario 3 seria um link quebrado no app -- e o teste
+   * acima passaria, porque so olha o JSON.
+   */
+  it('todo comunicado do mural existe em /banco/noticia', async () => {
+    const mural = await api().get('/banco/comunicados').expect(200);
+
+    for (const comunicado of mural.body.comunicados) {
+      const noticia = await api().get(`/banco/noticia?id=${comunicado.id}`);
+      assert.equal(noticia.status, 200, `id=${comunicado.id}`);
+      assert.equal(noticia.body.noticia.titulo, comunicado.titulo);
+    }
+  });
+
+  it('as duas leituras nao carregam o campo detalhes em nenhum modo', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const cliente = await sessao.get('/banco/cliente/CLI001').expect(200);
+      const comunicados = await sessao.get('/banco/comunicados').expect(200);
+
+      assert.equal('detalhes' in cliente.body, false);
+      assert.equal('detalhes' in comunicados.body, false);
+      // O bloco `modo` pertence aos endpoints de cenario: ele existe para
+      // deixar claro que a rota leu o cookie. Estas leituras nao tem cenario,
+      // entao nao anunciam modo.
+      assert.equal('modo' in cliente.body, false);
     }
   });
 });

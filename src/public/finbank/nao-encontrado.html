@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pagina nao encontrada — FinBank</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/finbank.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--finbank" data-app="finbank">
+    <header class="fb-topo">
+      <div class="fb-topo__interno">
+        <a class="fb-marca" href="/finbank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 9.5 12 4l9 5.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 10v7M9.7 10v7M14.3 10v7M19 10v7M3.5 20h17" stroke-linecap="round" />
+          </svg>
+          <span class="fb-marca__nome">FinBank</span>
+        </a>
+
+        <nav class="fb-nav" aria-label="Navegacao principal">
+          <a href="/finbank">Inicio</a>
+          <a href="/finbank/agencias">Agencias</a>
+          <a href="/finbank/extrato">Extrato</a>
+          <a href="/finbank/comunicados">Comunicados</a>
+        </nav>
+
+        <div class="fb-conta">
+          <div class="fb-conta__texto">
+            <span class="fb-conta__nome" id="conta-nome">--</span>
+            <span class="fb-conta__id" id="conta-id">--</span>
+          </div>
+          <span class="fb-conta__avatar" id="conta-avatar">--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="fb-conteudo">
+      <section class="pagina-erro">
+        <span class="fb-tag">Erro 404</span>
+        <p class="pagina-erro__codigo">404</p>
+        <h1>Pagina nao encontrada</h1>
+        <p>
+          O endereco acessado nao corresponde a nenhuma tela do autoatendimento.
+        </p>
+        <a class="fb-botao" href="/finbank">Voltar para o inicio</a>
+      </section>
+    </main>
+
+    <footer class="fb-rodape">
+      <div class="largura-max">
+        <p class="fb-rodape__aviso">
+          Ambiente de treinamento. Todos os clientes, agencias, transacoes e
+          documentos apresentados sao sinteticos.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { iniciarFinBank } from '/js/finbank.js';
+
+      await iniciarFinBank();
+    </script>
+  </body>
+</html>

@@ -1,15 +1,16 @@
 /**
  * Utilitarios compartilhados do laboratorio (DAS v2.2, secoes 3 e 7).
  *
- * Este modulo monta a barra de modo em qualquer pagina que declare os
- * marcadores data-lab-modo e data-lab-reset, para que o toggle de modo e o
- * reset sejam escritos uma unica vez.
+ * Este modulo cuida do CONTRATO DE MODO e da formatacao. Ele nao desenha nada:
+ * a barra fina do laboratorio e o console do instrutor montam o proprio DOM
+ * em src/public/js/chrome.js e src/public/js/palco.js, e as paginas de app
+ * tratam do proprio conteudo.
  *
  * REGRA IMPORTANTE: todo texto vindo do servidor e escrito com textContent,
- * nunca com innerHTML. Os paineis de debug deste arquivo existe justamente para
- * deixar a saida do servidor visivel durante a demo, e nao podem se tornar um
- * segundo ponto de injecao. O unico innerHTML do laboratorio e o sink XSS
- * documentado em src/public/receitas/receitas.js (DAS 4.4).
+ * nunca com innerHTML. Os paineis de debug deste laboratorio existem justamente
+ * para deixar a saida do servidor visivel durante a demonstracao, e nao podem
+ * se tornar um segundo ponto de injecao. O unico innerHTML do laboratorio e o
+ * sink XSS documentado em src/public/cheflab/receita.js (DAS 4.4).
  */
 
 const MODO_VULN = 'vuln';
@@ -65,46 +66,14 @@ export async function reiniciarLab(evento) {
   }
 }
 
-/** Pintura do modo no <html>, para o CSS escolher a cor de destaque. */
+/** Pintura do modo no <html>, para o CSS escolher a cor do chrome. */
 export function aplicarModoNoDocumento(modo) {
   document.documentElement.dataset.modo = modo;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Barra de modo e reset                                                      */
-/* -------------------------------------------------------------------------- */
-
-function montarControleModo(alvo) {
-  const container = document.createElement('div');
-  container.className = 'modo-controle';
-
-  const rotulo = document.createElement('span');
-  rotulo.className = 'modo-controle__rotulo';
-  rotulo.textContent = 'Modo';
-  container.append(rotulo);
-
-  for (const modo of [MODO_VULN, MODO_SAFE]) {
-    const botao = document.createElement('button');
-    botao.type = 'button';
-    botao.className = 'modo-opcao';
-    botao.textContent = ROTULOS[modo];
-    botao.dataset.modo = modo;
-    botao.setAttribute('aria-pressed', 'false');
-    botao.addEventListener('click', () => definirModo(modo));
-    container.append(botao);
-  }
-
-  alvo.replaceChildren(container);
-}
-
-function marcarModoAtivo(modo) {
-  // Anotacao apenas para o `tsc --checkJs`: `querySelectorAll` devolve
-  // `Element`, e `dataset` existe em `HTMLElement`. Nada muda em runtime.
-  for (const botao of /** @type {NodeListOf<HTMLElement>} */ (
-    document.querySelectorAll('.modo-opcao')
-  )) {
-    botao.setAttribute('aria-pressed', String(botao.dataset.modo === modo));
-  }
+/** Rotulo legivel de um modo, para texto fora do botao segmentado. */
+export function rotuloDoModo(modo) {
+  return ROTULOS[modo] ?? ROTULOS[MODO_VULN];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -187,8 +156,13 @@ export function paraDataTime(valor) {
 }
 
 /**
- * Mostra a resposta bruta da API. E aqui que o aluno ve o vazamento: as linhas
- * extras do UNION e a mensagem XPATH do cenario 2 ficam visiveis no JSON.
+ * Mostra a resposta crua da API dentro de um <pre>.
+ *
+ * O <details> que envolve esse <pre> e estatico no HTML de cada pagina: o
+ * laboratorio mostra a resposta quando e util e a esconde quando atrapalha.
+ *
+ * @param {Element | null} elemento o <pre> de destino.
+ * @param {unknown} dados
  */
 export function mostrarJson(elemento, dados) {
   if (!elemento) {
@@ -211,83 +185,46 @@ export function preencherTexto(elemento, texto) {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Roteiro: payload clicavel                                                 */
-/* -------------------------------------------------------------------------- */
-
 /**
- * Liga cada bloco .payload a um campo de entrada, para o apresentador nao ter
- * que colar o payload na mao durante a demonstracao ao vivo. O texto do bloco
- * precisa estar sem quebras de linha, porque e lido via textContent.
+ * Copia texto para a area de transferencia.
+ *
+ * Existe para o console do instrutor: os payloads ficaram fora das paginas de
+ * app, e o caminho mais curto para o campo e a area de transferencia -- colar
+ * direto no input, sem passar por um botao que preenche o campo por baixo dos
+ * panos, que e o que a afordancia "Usar no campo" fazia.
+ *
+ * A APIClipboard exige contexto seguro, o laboratorio roda em http://127.0.0.1
+ * e conta como seguro. O `execCommand` fica como reserva para os navegadores
+ * onde a promessa rejeita.
+ *
+ * @param {string} texto
+ * @returns {Promise<boolean>} se a copia foi concluida.
  */
-function montarRoteiros() {
-  // Anotacao apenas para o `tsc --checkJs`: sem ela `bloco` e `Element` e o
-  // `dataset.alvo` abaixo seria reportado como propriedade inexistente.
-  for (const bloco of /** @type {NodeListOf<HTMLElement>} */ (
-    document.querySelectorAll('.payload[data-exemplo]')
-  )) {
-    // Todo `data-alvo` do laboratorio aponta para um campo de texto (textarea
-    // no ChefLab, input no FinBank), e `value` so existe nos subtipos de
-    // formulario -- por isso o cast, e nao `HTMLElement` generico.
-    const alvo = /** @type {HTMLTextAreaElement | HTMLInputElement} */ (
-      document.querySelector(bloco.dataset.alvo)
-    );
-    if (!alvo) {
-      continue;
+export async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = texto;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+
+    let copiou = false;
+    try {
+      copiou = document.execCommand('copy');
+    } catch {
+      copiou = false;
     }
 
-    const exemplo = bloco.textContent;
-
-    const botao = document.createElement('button');
-    botao.type = 'button';
-    botao.className = 'botao botao--primario';
-    botao.textContent = 'Usar no campo';
-    botao.addEventListener('click', () => {
-      alvo.value = exemplo;
-      alvo.focus();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    bloco.insertAdjacentElement('afterend', botao);
+    area.remove();
+    return copiou;
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Bootstrap                                                                  */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Executa em toda pagina do laboratorio. Busca o modo uma unica vez e so entao
- * monta a barra, para que a pagina nunca pisque no modo errado.
- */
-export async function iniciarLaboratorio() {
-  let modo = MODO_VULN;
-
-  try {
-    modo = await obterModo();
-  } catch (erro) {
-    console.warn('[lab] nao foi possivel ler o modo, assumindo vuln:', erro.message);
-  }
-
-  aplicarModoNoDocumento(modo);
-
-  for (const alvo of document.querySelectorAll('[data-lab-modo]')) {
-    montarControleModo(alvo);
-  }
-  marcarModoAtivo(modo);
-
-  for (const alvo of document.querySelectorAll('[data-lab-reset]')) {
-    alvo.addEventListener('click', reiniciarLab);
-  }
-
-  montarRoteiros();
-
-  document.dispatchEvent(
-    new CustomEvent('lab:pronto', { detail: { modo } }),
-  );
-
-  return modo;
 }
 
 export const LAB_MODO_VULN = MODO_VULN;
 export const LAB_MODO_SAFE = MODO_SAFE;
+export const LAB_ROTULOS = ROTULOS;

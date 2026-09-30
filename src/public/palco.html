@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Console do instrutor — Oficina SQLi e XSS</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <!-- Pagina de ferramenta: a barra fina nao entra. O console tem o proprio
+       controle de modo e precisa ocupar a tela inteira. -->
+  <body data-lab-chrome="ausente">
+    <div class="largura-max">
+      <header class="palco-cabecalho">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            gap: var(--e-4);
+            flex-wrap: wrap;
+          "
+        >
+          <img
+            src="/img/escudo-liga.png"
+            alt=""
+            width="30"
+            height="35"
+            style="object-fit: contain"
+          />
+          <div>
+            <h1>Console do instrutor</h1>
+            <p>
+              Roteiro, payloads e sondagem. Esta tela e sua: o projetor mostra
+              o aplicativo, nunca esta pagina.
+            </p>
+          </div>
+          <a class="botao" href="/" style="margin-left: auto">lancador</a>
+        </div>
+      </header>
+
+      <div class="palco-grade">
+        <div class="palco-coluna">
+          <section class="palco-painel">
+            <h2>Sessao</h2>
+
+            <div class="inspetor-status">
+              <div id="palco-modo-controle"></div>
+              <span class="modo-selo" id="palco-modo">Vulneravel</span>
+              <button type="button" class="botao" id="palco-reset">
+                Restaurar laboratorio
+              </button>
+              <span class="pill" id="palco-saude">verificando banco...</span>
+            </div>
+
+            <p>
+              O modo vale para todas as paginas: o app nao muda de cor nem de
+              conteudo ao trocar de modo. Quem conduz ve a cor na barra; o aluno
+              nao tem esse sinal na tela em que esta trabalhando.
+            </p>
+          </section>
+
+          <section class="palco-painel">
+            <h2>Roteiro</h2>
+
+            <div class="inspetor-campo" style="margin-bottom: var(--e-3)">
+              <span>Cenario</span>
+              <select id="seletor-cenario"></select>
+            </div>
+
+            <p id="descricao-cenario"></p>
+            <p id="alvo-cenario" class="payload-linha__rotulo"></p>
+            <a class="botao botao--mini" id="alvo-ativo" href="/">abrir</a>
+
+            <div id="lista-passos"></div>
+          </section>
+        </div>
+
+        <div class="palco-coluna">
+          <section class="palco-painel">
+            <h2>Payloads</h2>
+            <p>
+              Copie e cole no campo do aplicativo. O espaco final depois de
+              <code>--</code> e obrigatorio.
+            </p>
+            <div id="lista-payloads"></div>
+          </section>
+
+          <section class="palco-painel">
+            <h2>Inspetor</h2>
+            <p>
+              Executa um GET e mostra status e corpo, sem trocar de aba. Para
+              ver a resposta com o mesmo layout do app, use o campo do
+              aplicativo.
+            </p>
+
+            <div class="inspetor-status">
+              <div class="inspetor-campo">
+                <span>Rota</span>
+                <select id="seletor-rota"></select>
+              </div>
+              <div class="inspetor-campo">
+                <span>Parametro</span>
+                <input id="campo-parametro" autocomplete="off" spellcheck="false" />
+              </div>
+              <div class="inspetor-campo" style="flex: 1">
+                <span>Valor</span>
+                <input
+                  id="campo-valor"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="payload ou valor a enviar"
+                />
+              </div>
+              <button type="button" class="botao" id="botao-sondar">Sondar</button>
+            </div>
+
+            <div class="inspetor-status">
+              <span class="pill" id="sonda-status"></span>
+            </div>
+            <pre class="inspetor-json inspetor-json--vazio" id="sonda-json">nenhuma sondagem ainda</pre>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/palco.js"></script>
+  </body>
+</html>

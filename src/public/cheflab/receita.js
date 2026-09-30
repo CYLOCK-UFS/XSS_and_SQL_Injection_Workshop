@@ -12,17 +12,27 @@
    comentario fosse armazenado com a marcacao intacta e re-renderizado por
    innerHTML, o payload dispara a cada visita, sem nova interacao - e por isso
    que o cenario se chama XSS ARMAZENADO.
+
+   Nao ha nesta pagina nenhum aviso dizendo em que modo ela esta. A pagina e a
+   mesma nos dois modos de proposito: quem conduz troca o modo na barra e ve a
+   lista mudar de comportamento sem que o site tenha|Se revelado. O roteiro que
+   explica a diferenca mora em /palco.
+
+   Os nomes das classes e dos ids exportados para o CSS e para os testes estao
+   comments no inicio de cada bloco. .comentario, .comentario__autor e
+   .comentario__texto sao contrato: sao o que o sink interpola e o que
+   tests/e2e/cheflab.spec.js localiza.
    ============================================================================= */
 
+import { iniciarChrome } from '../js/chrome.js';
 import {
   formatarData,
-  iniciarLaboratorio,
   mostrarJson,
   paraDataTime,
   preencherTexto,
 } from '../js/lab.js';
 
-const modo = await iniciarLaboratorio();
+const modo = await iniciarChrome();
 
 const formulario = document.querySelector('#formulario');
 
@@ -30,10 +40,10 @@ const formulario = document.querySelector('#formulario');
  * As anotacoes abaixo existem so para o `tsc --checkJs`.
  *
  * `querySelector` devolve `Element`, que nao tem `value` nem `disabled` -- o
- * tipo real de um campo de formulario e `HTMLTextAreaElement`, e o de um botao e
- * `HTMLButtonElement`. Como o JavaScript nao tem anotacao de tipo, o
- * `querySelector` erra para o tipo mais generico e o typecheck acusaria
- * propriedade inexistente em onze linhas.
+ * tipo real do autor e um `HTMLInputElement`, o do texto e um
+ * `HTMLTextAreaElement`, e o do botao e um `HTMLButtonElement`. Como o
+ * JavaScript nao tem anotacao de tipo, o `querySelector` erra para o tipo mais
+ * generico e o typecheck acusaria propriedade inexistente.
  *
  * A alternativa seria trocar `querySelector` por `getElementById`, que ja
  * devolve o tipo certo -- mas o seletor por id e mais legivel para quem esta
@@ -42,33 +52,20 @@ const formulario = document.querySelector('#formulario');
  *
  * Nenhuma dessas anotacoes altera o runtime.
  */
-const campoAutor = /** @type {HTMLTextAreaElement} */ (
+const campoAutor = /** @type {HTMLInputElement} */ (
   document.querySelector('#campo-autor')
 );
 const campoTexto = /** @type {HTMLTextAreaElement} */ (
   document.querySelector('#campo-texto')
 );
+
+/* Contrato com cheflab.css e com o E2E: nao renomear. */
 const lista = document.querySelector('#lista-comentarios');
 const vazio = document.querySelector('#lista-vazia');
 const resumo = document.querySelector('#resumo');
 const json = document.querySelector('#json-resposta');
-const painelAviso = document.querySelector('#painel-aviso');
-const textoAviso = document.querySelector('#texto-aviso');
 
 formulario.addEventListener('submit', publicar);
-
-if (modo === 'vuln') {
-  painelAviso.classList.remove('oculto');
-  preencherTexto(
-    textoAviso,
-    'Modo vulneravel: a lista e montada com innerHTML. Uma marcacao HTML no comentario e interpretada pelo navegador.',
-  );
-} else {
-  preencherTexto(
-    textoAviso,
-    'Modo seguro: a mesma lista e montada com textContent. Nenhum innerHTML neste arquivo, e a marcacao aparece como texto literal.',
-  );
-}
 
 await carregar();
 
@@ -76,6 +73,13 @@ await carregar();
 /* Gravacao: identica nos dois modos                                          */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Publica o comentario e recarrega a lista.
+ *
+ * Identico nos dois modos, porque o risco nao esta em gravar: o INSERT e
+ * parametrizado e a marcacao volta intacta do banco. O que acontece com ela
+ * depois esta no bloco de saida, la embaixo.
+ */
 async function publicar(evento) {
   evento.preventDefault();
 
@@ -83,6 +87,9 @@ async function publicar(evento) {
     formulario.querySelector('button[type="submit"]')
   );
   botao.disabled = true;
+
+  const aviso = document.querySelector('#aviso-envio');
+  preencherTexto(aviso, 'publicando...');
 
   try {
     const resposta = await fetch('/receitas', {
@@ -106,6 +113,7 @@ async function publicar(evento) {
     await carregar();
   } finally {
     botao.disabled = false;
+    preencherTexto(aviso, '');
   }
 }
 
@@ -117,7 +125,7 @@ async function carregar() {
 
   mostrarJson(json, dados);
   desenhar(dados.comentarios ?? []);
-  preencherTexto(resumo, `${dados.total} comentario(s) gravado(s) no banco.`);
+  preencherTexto(resumo, `${dados.total} comentario(s).`);
 }
 
 /* -------------------------------------------------------------------------- */

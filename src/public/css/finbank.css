@@ -1,0 +1,815 @@
+/* =============================================================================
+   finbank.css - identidade do FinBank
+   =============================================================================
+   Azul institucional sobre base quase preta, com numeracao tabular para os
+   valores. Um banco de verdade e escuro e silencioso: a cor esta no azul, a
+   informacao esta nos numeros.
+
+   NENHUMA variavel desta folha depende do modo do laboratorio. E essa e a
+   regra que sustenta o trabalho inteiro (ver o cabecalho de lab.css): se a
+   paleta do banco mudasse junto com o modo, o aluno leria a resposta na cor da
+   pagina antes de digitar o payload. As duas paletas coexistem na mesma tela e
+   nao se tocam.
+
+   Sem CDN, sem fonte remota, sem imagem remota: o projetor da sala esta sem
+   internet. Os pictogramas sao SVG inline no proprio HTML.
+   ============================================================================= */
+
+:root {
+  /* Base azul-marinho. Os tons separam por funcao: fundo, superficie, e o
+     realce que separa um bloco de outro. */
+  --fb-fundo: #080d16;
+  --fb-superficie: #0e1624;
+  --fb-superficie-2: #141e30;
+  --fb-hover: #1a2740;
+  --fb-borda: #1e2b41;
+  --fb-borda-forte: #2c3f5c;
+
+  --fb-texto: #eaf1fa;
+  --fb-texto-suave: #92a5bf;
+  --fb-texto-tenue: #6b7f9b;
+
+  /* Azul do banco. */
+  --fb-marca: #3d7dfa;
+  --fb-marca-claro: #6fa2ff;
+  --fb-marca-fundo: rgba(61, 125, 250, 0.13);
+  --fb-marca-borda: rgba(61, 125, 250, 0.42);
+
+  --fb-positivo: #3ac48c;
+  --fb-negativo: #ef6a6a;
+
+  --fb-raio: var(--raio);
+  --fb-sombra: 0 14px 38px rgba(0, 0, 0, 0.45);
+}
+
+body.app--finbank {
+  background: var(--fb-fundo);
+  color: var(--fb-texto);
+}
+
+/**
+ * Faixa luminosa no topo da pagina.
+ *
+ * Um degradê radial vindo de cima e a direita, quase imperceptivel: da a
+ * sensacao de "app de verdade" sem competir com o conteudo. Sem ele a tela fica
+ * com cara de painel administrativo.
+ */
+body.app--finbank::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: 420px;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    90% 100% at 50% -10%,
+    rgba(61, 125, 250, 0.16),
+    transparent 70%
+  );
+}
+
+body.app--finbank > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cabecalho e navegacao                                                      */
+/* -------------------------------------------------------------------------- */
+
+.fb-topo {
+  position: sticky;
+  top: var(--lab-barra-altura);
+  z-index: 30;
+  background: rgba(10, 16, 26, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--fb-borda);
+}
+
+.fb-topo__interno {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: var(--e-3) var(--e-5);
+  display: flex;
+  align-items: center;
+  gap: var(--e-5);
+}
+
+.fb-marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  color: var(--fb-texto);
+  text-decoration: none;
+  flex: none;
+}
+
+.fb-marca svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+.fb-marca__nome {
+  font-size: var(--t-18);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.fb-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  flex-wrap: wrap;
+}
+
+.fb-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 var(--e-3);
+  border-radius: var(--raio-sm);
+  color: var(--fb-texto-suave);
+  font-size: var(--t-14);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--duracao), color var(--duracao);
+}
+
+.fb-nav a:hover {
+  background: var(--fb-hover);
+  color: var(--fb-texto);
+  text-decoration: none;
+}
+
+.fb-nav a[aria-current="page"] {
+  background: var(--fb-marca-fundo);
+  color: var(--fb-marca-claro);
+}
+
+/* Contexto do cliente logado: um banco mostra de quem e a tela. */
+.fb-conta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding-left: var(--e-5);
+  border-left: 1px solid var(--fb-borda);
+}
+
+.fb-conta__texto {
+  text-align: right;
+  line-height: 1.25;
+}
+
+.fb-conta__nome {
+  display: block;
+  font-size: var(--t-13);
+  font-weight: 600;
+}
+
+.fb-conta__id {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--t-12);
+  color: var(--fb-texto-suave);
+}
+
+.fb-conta__avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--fb-marca-fundo);
+  border: 1px solid var(--fb-marca-borda);
+  color: var(--fb-marca-claro);
+  font-size: var(--t-13);
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estrutura de pagina                                                        */
+/* -------------------------------------------------------------------------- */
+
+.fb-conteudo {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: var(--e-6) var(--e-5) var(--e-7);
+}
+
+.fb-migalha {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  margin-bottom: var(--e-3);
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+}
+
+.fb-migalha a {
+  color: var(--fb-texto-suave);
+}
+
+.fb-titulo {
+  font-size: var(--t-28);
+  letter-spacing: -0.015em;
+  margin-bottom: var(--e-2);
+}
+
+.fb-titulo--pagina {
+  margin-bottom: var(--e-5);
+}
+
+.fb-legenda {
+  max-width: 62ch;
+  color: var(--fb-texto-suave);
+  font-size: var(--t-14);
+  margin-bottom: var(--e-5);
+}
+
+.fb-bloco {
+  background: var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+  padding: var(--e-5);
+  margin-bottom: var(--e-4);
+}
+
+.fb-bloco__cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--e-4);
+}
+
+.fb-bloco__titulo {
+  font-size: var(--t-16);
+  font-weight: 700;
+}
+
+.fb-bloco__nota {
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Home: heroi e saldo                                                        */
+/* -------------------------------------------------------------------------- */
+
+.fb-heroi {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--e-4);
+  margin-bottom: var(--e-4);
+}
+
+.fb-saldo {
+  background:
+    radial-gradient(120% 160% at 100% 0%, rgba(61, 125, 250, 0.2), transparent 62%),
+    var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+  padding: var(--e-5);
+  box-shadow: var(--fb-sombra);
+}
+
+.fb-saldo__rotulo {
+  font-size: var(--t-13);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fb-texto-suave);
+}
+
+.fb-saldo__valor {
+  display: block;
+  margin-top: var(--e-2);
+  font-size: var(--t-34);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-saldo__linha {
+  margin-top: var(--e-4);
+  padding-top: var(--e-3);
+  border-top: 1px solid var(--fb-borda);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+}
+
+.fb-atalhos {
+  display: grid;
+  gap: var(--e-2);
+}
+
+.fb-atalho {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  min-height: 56px;
+  padding: var(--e-3) var(--e-4);
+  background: var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--duracao), background var(--duracao);
+}
+
+.fb-atalho:hover {
+  border-color: var(--fb-marca-borda);
+  background: var(--fb-superficie-2);
+  text-decoration: none;
+}
+
+.fb-atalho svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--fb-marca-claro);
+}
+
+.fb-atalho__titulo {
+  display: block;
+  font-size: var(--t-14);
+  font-weight: 700;
+}
+
+.fb-atalho__nota {
+  display: block;
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dinheiro                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `tabular-nums` nao e detalhe tipografico: sem ele a coluna de valores dance a
+ * cada digito lido, e uma coluna de extrato que dança parece errada.
+ */
+.dinheiro {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.dinheiro--positivo {
+  color: var(--fb-positivo);
+}
+
+.dinheiro--negativo {
+  color: var(--fb-negativo);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cenario 1: agencias                                                        */
+/* -------------------------------------------------------------------------- */
+
+.fb-consulta {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e-3);
+  flex-wrap: wrap;
+}
+
+.fb-campo-grupo {
+  flex: 1;
+  min-width: 220px;
+}
+
+.fb-rotulo {
+  display: block;
+  margin-bottom: 5px;
+  font-size: var(--t-13);
+  font-weight: 600;
+  color: var(--fb-texto-suave);
+}
+
+.fb-campo {
+  width: 100%;
+  min-height: var(--toque);
+  padding: 0 var(--e-3);
+  color: var(--fb-texto);
+  background: var(--fb-fundo);
+  border: 1px solid var(--fb-borda-forte);
+  border-radius: var(--raio-sm);
+}
+
+.fb-campo::placeholder {
+  color: var(--fb-texto-tenue);
+}
+
+.fb-campo:focus {
+  outline: 2px solid var(--fb-marca-borda);
+  outline-offset: 1px;
+  border-color: var(--fb-marca);
+}
+
+textarea.fb-campo {
+  padding: var(--e-2) var(--e-3);
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.fb-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+  padding: 0 var(--e-5);
+  border: 1px solid var(--fb-marca);
+  border-radius: var(--raio-sm);
+  background: var(--fb-marca);
+  color: #06101f;
+  font-size: var(--t-14);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter var(--duracao);
+}
+
+.fb-botao:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+}
+
+.fb-botao--fantasma {
+  background: transparent;
+  border-color: var(--fb-borda-forte);
+  color: var(--fb-texto-suave);
+}
+
+.fb-botao--fantasma:hover {
+  background: var(--fb-hover);
+  color: var(--fb-texto);
+}
+
+.fb-botao:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/**
+ * Cartao de agencia.
+ *
+ * Sao quatro campos, na ordem da consulta publica: nome, endereco, telefone e
+ * gerente. A ordem nao e estetica, e o que faz a assinatura do UNION
+ * reconhecivel na tela: quem compara com o resultado da tabela de cartoes ve
+ * quatro posicoes ocupadas nas duas.
+ */
+.fb-agencias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--e-3);
+}
+
+.fb-agencia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  padding: var(--e-4);
+  background: var(--fb-superficie-2);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+}
+
+.fb-agencia__nome {
+  font-size: var(--t-16);
+  font-weight: 700;
+}
+
+.fb-agencia__campo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-2);
+  font-size: var(--t-14);
+  color: var(--fb-texto-suave);
+}
+
+.fb-agencia__campo svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 4px;
+  color: var(--fb-texto-tenue);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cenario 2: extrato                                                         */
+/* -------------------------------------------------------------------------- */
+
+.fb-conta-cartao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  flex-wrap: wrap;
+  padding: var(--e-4) var(--e-5);
+  background:
+    linear-gradient(120deg, rgba(61, 125, 250, 0.14), transparent 55%),
+    var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+  margin-bottom: var(--e-4);
+}
+
+.fb-conta-cartao__rotulo {
+  font-size: var(--t-12);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--fb-texto-suave);
+}
+
+.fb-conta-cartao__valor {
+  display: block;
+  font-size: var(--t-28);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+.fb-extrato {
+  width: 100%;
+  font-size: var(--t-14);
+}
+
+.fb-extrato th,
+.fb-extrato td {
+  padding: var(--e-3) var(--e-3);
+  text-align: left;
+  border-bottom: 1px solid var(--fb-borda);
+}
+
+.fb-extrato th {
+  font-size: var(--t-12);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fb-texto-suave);
+  font-weight: 600;
+  background: var(--fb-superficie-2);
+}
+
+.fb-extrato td:nth-child(1),
+.fb-extrato td:nth-child(4) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fb-extrato td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fb-extrato tbody tr:hover td {
+  background: var(--fb-hover);
+}
+
+.fb-extrato tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.fb-rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--fb-raio);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cenario 3: comunicados e noticia                                           */
+/* -------------------------------------------------------------------------- */
+
+.fb-comunicados {
+  display: grid;
+  gap: var(--e-3);
+}
+
+.fb-comunicado {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--e-4);
+  align-items: baseline;
+  padding: var(--e-4);
+  background: var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-left: 3px solid var(--fb-marca);
+  border-radius: var(--raio);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--duracao), background var(--duracao);
+}
+
+.fb-comunicado:hover {
+  background: var(--fb-superficie-2);
+  text-decoration: none;
+}
+
+.fb-comunicado__data {
+  font-family: var(--mono);
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-comunicado__titulo {
+  display: block;
+  font-size: var(--t-16);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.fb-artigo {
+  max-width: 72ch;
+}
+
+.fb-artigo__data {
+  font-family: var(--mono);
+  font-size: var(--t-13);
+  color: var(--fb-texto-suave);
+  margin-bottom: var(--e-4);
+  padding-bottom: var(--e-3);
+  border-bottom: 1px solid var(--fb-borda);
+}
+
+.fb-artigo__corpo {
+  font-size: var(--t-18);
+  line-height: 1.7;
+  color: var(--fb-texto);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estados: erro, vazio e pagina 404                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Erro de consulta.
+ *
+ * O que o aluno ve depende do modo, e essa diferenca e a demonstracao. No
+ * vulneravel, alem da mensagem amigavel, o bloco de detalhes tecnicos carrega
+ * a mensagem crua do MySQL -- e e assim que um vazamento real aparece: nao como
+ * "hackerswere here", e como um bloco de debug que ninguem revisou antes de
+ * publicar.
+ */
+.fb-erro {
+  padding: var(--e-5);
+  background: var(--fb-superficie);
+  border: 1px solid var(--fb-borda);
+  border-left: 3px solid var(--fb-negativo);
+  border-radius: var(--fb-raio);
+}
+
+.fb-erro__titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  font-size: var(--t-18);
+  font-weight: 700;
+  margin-bottom: var(--e-2);
+}
+
+.fb-erro__texto {
+  color: var(--fb-texto-suave);
+  font-size: var(--t-14);
+}
+
+.fb-detalhe-tecnico {
+  margin-top: var(--e-4);
+  border: 1px solid rgba(239, 106, 106, 0.32);
+  border-radius: var(--raio-sm);
+  background: rgba(239, 106, 106, 0.06);
+  overflow: hidden;
+}
+
+.fb-detalhe-tecnico > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+  padding: 0 var(--e-3);
+  font-family: var(--mono);
+  font-size: var(--t-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fb-negativo);
+  cursor: pointer;
+  list-style: none;
+}
+
+.fb-detalhe-tecnico > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fb-detalhe-tecnico > summary::before {
+  content: "+";
+  font-weight: 700;
+}
+
+.fb-detalhe-tecnico[open] > summary::before {
+  content: "\2212";
+}
+
+.fb-detalhe-tecnico pre {
+  margin: 0;
+  padding: var(--e-3);
+  border-top: 1px solid rgba(239, 106, 106, 0.22);
+  font-size: var(--t-13);
+  line-height: 1.55;
+  color: #ffd9d9;
+  background: rgba(0, 0, 0, 0.32);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fb-vazio {
+  padding: var(--e-6) var(--e-4);
+  text-align: center;
+  color: var(--fb-texto-suave);
+  font-size: var(--t-14);
+}
+
+.fb-vazio strong {
+  display: block;
+  color: var(--fb-texto);
+  margin-bottom: var(--e-1);
+}
+
+/** Selo de contexto: usado no 404 para marcar o codigo HTTP da pagina. */
+.fb-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--fb-marca-borda);
+  background: var(--fb-marca-fundo);
+  color: var(--fb-marca-claro);
+  font-size: var(--t-12);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rodape                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.fb-rodape {
+  margin-top: var(--e-7);
+  padding: var(--e-5) 0 var(--e-6);
+  border-top: 1px solid var(--fb-borda);
+  color: var(--fb-texto-suave);
+  font-size: var(--t-13);
+}
+
+.fb-rodape__grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-3) var(--e-6);
+  align-items: baseline;
+}
+
+.fb-rodape__aviso {
+  margin-top: var(--e-3);
+  color: var(--fb-texto-tenue);
+  font-size: var(--t-12);
+  max-width: 70ch;
+}
+
+@media (max-width: 860px) {
+  .fb-heroi {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fb-topo__interno {
+    gap: var(--e-3);
+  }
+
+  .fb-conta {
+    padding-left: var(--e-3);
+  }
+
+  .fb-comunicado {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--e-1);
+  }
+}
+
+@media (max-width: 620px) {
+  .fb-conta__texto {
+    display: none;
+  }
+
+  .fb-agencias {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

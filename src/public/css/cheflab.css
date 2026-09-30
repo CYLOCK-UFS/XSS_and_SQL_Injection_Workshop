@@ -1,0 +1,610 @@
+/* =============================================================================
+   cheflab.css - identidade do ChefLab
+   =============================================================================
+   Base marrom-quente, terracota como cor de marca, verde-oliva de apoio, e
+   serifada de verdade nos titulos de receita. Um portal de comida e quente e
+   tem espacanco: e o oposto do banco, e o contraste entre os dois apps e parte
+   do trabalho -- o aluno tem que perceber que mudou de alvo so pelo visual.
+
+   NENHUMA variavel desta folha depende do modo do laboratorio (ver o cabecalho
+   de lab.css): o ChefLab precisa ter a mesma cara no modo vuln e no modo safe.
+   Se o tom da pagina mudasse junto com o modo, o aluno leria a resposta na cor.
+
+   Os nomes de classe do comentario (.comentario, .comentario__autor,
+   .comentario__texto) nao sao escolha estetica: sao o contrato do sink de XSS,
+   o que renderizarComInnerHTML interpola, e o que tests/e2e/cheflab.spec.js
+   localiza. Renomear qualquer um deles quebra o teste que prova o cenario.
+   ============================================================================= */
+
+:root {
+  --cl-fundo: #16100c;
+  --cl-superficie: #1f1811;
+  --cl-superficie-2: #292016;
+  --cl-hover: #33281c;
+  --cl-borda: #3a2e21;
+  --cl-borda-forte: #4e3e2c;
+
+  --cl-texto: #f7efe6;
+  --cl-texto-suave: #c0ab95;
+  --cl-texto-tenue: #97856f;
+
+  /* Terracota. */
+  --cl-marca: #d97742;
+  --cl-marca-claro: #f0955e;
+  --cl-marca-fundo: rgba(217, 119, 66, 0.14);
+  --cl-marca-borda: rgba(217, 119, 66, 0.44);
+
+  /* Verde de ervas, para detalhe de apoio (marcadores, estrelas). */
+  --cl-oliva: #9aa564;
+
+  --cl-raio: var(--raio-gr);
+  --cl-sombra: 0 16px 44px rgba(0, 0, 0, 0.5);
+}
+
+body.app--cheflab {
+  background: var(--cl-fundo);
+  color: var(--cl-texto);
+  font-size: var(--t-16);
+}
+
+body.app--cheflab::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: 460px;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    85% 100% at 20% -10%,
+    rgba(217, 119, 66, 0.16),
+    transparent 68%
+  );
+}
+
+body.app--cheflab > * {
+  position: relative;
+  z-index: 1;
+}
+
+.cl-topo {
+  position: sticky;
+  top: var(--lab-barra-altura);
+  z-index: 30;
+  background: rgba(24, 18, 13, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cl-borda);
+}
+
+.cl-topo__interno {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--e-3) var(--e-5);
+  display: flex;
+  align-items: center;
+  gap: var(--e-5);
+}
+
+.cl-marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  color: var(--cl-texto);
+  text-decoration: none;
+  flex: none;
+}
+
+.cl-marca svg {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
+.cl-marca__nome {
+  font-family: var(--serifada);
+  font-size: var(--t-22);
+  letter-spacing: 0.01em;
+}
+
+.cl-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--e-4);
+  margin-left: auto;
+}
+
+.cl-nav a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--cl-texto-suave);
+  font-size: var(--t-14);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cl-nav a:hover {
+  color: var(--cl-texto);
+  text-decoration: none;
+}
+
+.cl-nav a[aria-current="page"] {
+  color: var(--cl-marca-claro);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estrutura                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.cl-conteudo {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--e-6) var(--e-5) var(--e-7);
+}
+
+.cl-titulo {
+  font-family: var(--serifada);
+  font-size: var(--t-34);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.cl-legenda {
+  max-width: 62ch;
+  margin-top: var(--e-3);
+  color: var(--cl-texto-suave);
+  font-size: var(--t-14);
+}
+
+.cl-bloco {
+  background: var(--cl-superficie);
+  border: 1px solid var(--cl-borda);
+  border-radius: var(--cl-raio);
+  padding: var(--e-5);
+  margin-bottom: var(--e-4);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Home: cartoes de receita                                                    */
+/* -------------------------------------------------------------------------- */
+
+.cl-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: var(--e-4);
+}
+
+.cl-cartao {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--cl-superficie);
+  border: 1px solid var(--cl-borda);
+  border-radius: var(--cl-raio);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--duracao), transform var(--duracao);
+}
+
+.cl-cartao:hover {
+  border-color: var(--cl-marca-borda);
+  transform: translateY(-3px);
+  text-decoration: none;
+}
+
+/**
+ * miniatura
+ *
+ * Sem CDN e sem foto: um degradue quente com o desenho da receita. Um bloco
+ * cinza com o nome do arquivo quebraria a imersao na hora, e a rede da sala nao
+ * tem de onde puxar imagem.
+ */
+.cl-miniatura {
+  aspect-ratio: 4 / 3;
+  background:
+    radial-gradient(70% 90% at 30% 20%, rgba(240, 149, 94, 0.3), transparent 70%),
+    linear-gradient(150deg, #3a2a1d, #221910);
+  display: grid;
+  place-items: center;
+}
+
+.cl-miniatura svg {
+  width: 46%;
+  height: auto;
+  color: rgba(247, 239, 230, 0.5);
+}
+
+.cl-cartao__corpo {
+  padding: var(--e-4);
+}
+
+.cl-cartao__titulo {
+  font-family: var(--serifada);
+  font-size: var(--t-18);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cl-cartao__meta {
+  margin-top: var(--e-2);
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  font-size: var(--t-13);
+  color: var(--cl-texto-suave);
+}
+
+.cl-cartao__rodape {
+  margin-top: var(--e-3);
+  padding-top: var(--e-3);
+  border-top: 1px solid var(--cl-borda);
+  font-size: var(--t-13);
+  color: var(--cl-texto-tenue);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pagina da receita: heroi, metricas, ingredientes, preparo                  */
+/* -------------------------------------------------------------------------- */
+
+.cl-heroi {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--e-5);
+  align-items: center;
+  margin-bottom: var(--e-6);
+}
+
+.cl-heroi__selo {
+  display: inline-block;
+  margin-bottom: var(--e-2);
+  padding: 3px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--cl-marca-borda);
+  background: var(--cl-marca-fundo);
+  color: var(--cl-marca-claro);
+  font-size: var(--t-12);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cl-heroi__autor {
+  margin-top: var(--e-3);
+  color: var(--cl-texto-suave);
+  font-size: var(--t-14);
+}
+
+.cl-heroi__autor b {
+  color: var(--cl-texto);
+}
+
+/**
+ * Metricas da receita: tempo, dificuldade, porcoes, avaliacao.
+ *
+ * Os valores sao estaticos no HTML. Nao ha tabela de receitas no banco, e o
+ * cenario 4 e sobre o comentario: o conteudo da receita pode ser fixo sem que
+ * nada perca sentido.
+ */
+.cl-metricas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--e-2);
+  padding: var(--e-4);
+  background: var(--cl-superficie);
+  border: 1px solid var(--cl-borda);
+  border-radius: var(--cl-raio);
+}
+
+.cl-metrica__rotulo {
+  display: block;
+  font-size: var(--t-12);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cl-texto-suave);
+}
+
+.cl-metrica__valor {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-16);
+  font-weight: 700;
+}
+
+.cl-estrelas {
+  color: var(--cl-oliva);
+  letter-spacing: 2px;
+  font-size: var(--t-14);
+}
+
+.cl-corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: var(--e-5);
+  align-items: start;
+}
+
+.cl-secao-titulo {
+  font-family: var(--serifada);
+  font-size: var(--t-22);
+  font-weight: 700;
+  margin-bottom: var(--e-3);
+}
+
+.cl-ingredientes {
+  list-style: none;
+}
+
+.cl-ingredientes li {
+  display: flex;
+  gap: var(--e-2);
+  align-items: baseline;
+  padding: var(--e-2) 0;
+  border-bottom: 1px dashed var(--cl-borda);
+  font-size: var(--t-14);
+}
+
+.cl-ingredientes li::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 2px;
+  background: var(--cl-oliva);
+}
+
+.cl-ingredientes li:last-child {
+  border-bottom: 0;
+}
+
+.cl-ingredientes b {
+  color: var(--cl-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+.cl-passos {
+  list-style: none;
+  counter-reset: passo;
+}
+
+.cl-passos li {
+  position: relative;
+  counter-increment: passo;
+  padding: var(--e-3) 0 var(--e-3) 44px;
+  border-bottom: 1px solid var(--cl-borda);
+  font-size: var(--t-16);
+  line-height: 1.65;
+}
+
+.cl-passos li:last-child {
+  border-bottom: 0;
+}
+
+.cl-passos li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0;
+  top: var(--e-3);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--cl-marca-fundo);
+  border: 1px solid var(--cl-marca-borda);
+  color: var(--cl-marca-claro);
+  font-size: var(--t-13);
+  font-weight: 700;
+}
+
+.cl-destaque {
+  margin-top: var(--e-4);
+  padding: var(--e-4);
+  border-left: 3px solid var(--cl-marca);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: rgba(217, 119, 66, 0.07);
+  font-size: var(--t-14);
+  color: var(--cl-texto-suave);
+}
+
+.cl-destaque b {
+  color: var(--cl-texto);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Comentarios -- cenario 4                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Area de comentarios.
+ *
+ * Onde a receita entra em cena e onde o comentario e a jogada. O formulario fica
+ * acima da lista, como em qualquer portal de receita: quem escreve nao rola a
+ * pagina para achar a caixa, e quem so le ve a conversa primeiro.
+ */
+.cl-comentarios-cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--e-4);
+}
+
+.cl-formulario {
+  display: grid;
+  gap: var(--e-3);
+  padding: var(--e-4);
+  margin-bottom: var(--e-5);
+  background: var(--cl-superficie-2);
+  border: 1px solid var(--cl-borda);
+  border-radius: var(--cl-raio);
+}
+
+.cl-formulario__linha {
+  display: flex;
+  gap: var(--e-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.cl-rotulo {
+  display: block;
+  margin-bottom: 5px;
+  font-size: var(--t-13);
+  font-weight: 600;
+  color: var(--cl-texto-suave);
+}
+
+.cl-campo {
+  width: 100%;
+  min-height: var(--toque);
+  padding: 0 var(--e-3);
+  color: var(--cl-texto);
+  background: var(--cl-fundo);
+  border: 1px solid var(--cl-borda-forte);
+  border-radius: var(--raio-sm);
+}
+
+.cl-campo::placeholder {
+  color: var(--cl-texto-tenue);
+}
+
+.cl-campo:focus {
+  outline: 2px solid var(--cl-marca-borda);
+  outline-offset: 1px;
+  border-color: var(--cl-marca);
+}
+
+textarea.cl-campo {
+  padding: var(--e-2) var(--e-3);
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.cl-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+  padding: 0 var(--e-5);
+  border: 1px solid var(--cl-marca);
+  border-radius: 999px;
+  background: var(--cl-marca);
+  color: #1b1109;
+  font-size: var(--t-14);
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter var(--duracao);
+}
+
+.cl-botao:hover {
+  filter: brightness(1.08);
+}
+
+.cl-botao:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.cl-aviso-envio {
+  font-size: var(--t-13);
+  color: var(--cl-texto-suave);
+}
+
+.cl-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+}
+
+/**
+ * Cartao de comentario.
+ *
+ * As tres classes daqui -- .comentario, .comentario__autor e
+ * .comentario__texto -- sao o sink. Ver o cabecalho desta folha.
+ */
+.comentario {
+  padding: var(--e-4);
+  background: var(--cl-superficie-2);
+  border: 1px solid var(--cl-borda);
+  border-radius: var(--cl-raio);
+}
+
+.comentario__autor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--e-3);
+  margin: 0 0 var(--e-2);
+  font-size: var(--t-14);
+}
+
+.comentario__autor strong {
+  font-size: var(--t-16);
+  font-weight: 700;
+}
+
+.comentario__autor time {
+  color: var(--cl-texto-suave);
+  font-family: var(--mono);
+  font-size: var(--t-12);
+}
+
+.comentario__texto {
+  margin: 0;
+  font-size: var(--t-16);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cl-vazio {
+  padding: var(--e-6) var(--e-4);
+  text-align: center;
+  color: var(--cl-texto-suave);
+  font-size: var(--t-14);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rodape                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.cl-rodape {
+  margin-top: var(--e-7);
+  padding: var(--e-5) 0 var(--e-6);
+  border-top: 1px solid var(--cl-borda);
+  color: var(--cl-texto-tenue);
+  font-size: var(--t-12);
+  text-align: center;
+}
+
+/** Selo de contexto: usado no 404 para marcar o codigo HTTP da pagina. */
+.cl-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--cl-marca-borda);
+  background: var(--cl-marca-fundo);
+  color: var(--cl-marca-claro);
+  font-size: var(--t-12);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .cl-heroi,
+  .cl-corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .cl-metricas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

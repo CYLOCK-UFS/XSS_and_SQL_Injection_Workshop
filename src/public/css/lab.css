@@ -1,277 +1,286 @@
 /* =============================================================================
-   Lab FinBank & ChefLab - folha de estilo unica (DAS v2.2, secao 2)
+   lab.css - o chrome do laboratorio: barra fina, lancador e console /palco
    =============================================================================
-   CSS proprio, sem CDN e sem build step: o laboratorio roda em rede isolada
-   e precisa funcionar sem internet no projetor da sala.
-
-   O modo do laboratorio (cookie lab_mode) escolhe a cor de destaque em
-   html[data-modo], de modo que o estado fique visivel a distancia durante a
-   apresentacao: vermelho = vulneravel, verde = mitigado.
+   Esta folha desenha a FERRAMENTA, nunca o app. As tres telas do laboratorio --
+   o lancador, o console /palco e a barra que fica sobre as paginas -- usam
+   estes tokens; o FinBank e o ChefLab nunca tocam nenhum deles.
 
    REGRA DE MARCA (nao quebrar): a identidade da liga tambem e verde
-   (--marca #00793F, extraido do escudo). Verde de marca so aparece em
-   grafico e superficie: filete do topo, wash do fundo, borda do roteiro,
-   escudo e favicon. Ele NUNCA pinta texto e NUNCA substitui --vuln/--safe,
-   senao o publico le "marca = seguro" enquanto o modo esta vulneravel.
-   Para texto que precisa parecer da marca existe --marca-texto, um branco
-   esverdeado, que nao se confunde com o verde de --safe.
+   (--lab-marca #00793F, extraido do escudo). Verde de marca so aparece em
+   grafico e superficie: filete da barra, wash do fundo, escudo. Ele NUNCA
+   pinta texto e NUNCA substitui --lab-vuln/--lab-safe, senao o publico le
+   "marca = seguro" enquanto o modo esta vulneravel. Para texto que precisa
+   parecer da marca existe --lab-marca-texto, um branco esverdeado, que nao se
+   confunde com o verde de --lab-safe.
+
+   REGRA DE MODO (nao quebrar): --lab-acento existe SO aqui. E o que mantem o
+   laboratorio honesto na projecao: quem conduz precisa ler o modo a distancia,
+   mas o aluno nao pode descobrir o modo pela cor da pagina em que esta
+   atacando. Enquanto as paginas de app nao usarem esta variavel, a cor do site
+   e identica nos dois modos -- mudar a paleta do app junto com o modo seria
+   entregar a resposta antes da pergunta.
    ============================================================================= */
 
 :root {
-  --fonte: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  /* Grafite neutro. Deliberadamente sem azul e sem calor: e o unico lugar da
+     tela que precisa nao parecer nenhum dos dois apps. */
+  --lab-fundo: #0a0c10;
+  --lab-fundo-alt: #0e1116;
+  --lab-superficie: #12151b;
+  --lab-superficie-2: #191d25;
+  --lab-hover: #20252f;
+  --lab-borda: #262c37;
+  --lab-borda-forte: #39414f;
+  --lab-texto: #eef1f5;
+  --lab-texto-suave: #9aa5b1;
 
-  /* Base quase preta + verde da liga, derivados do cabecalho institucional. */
-  --fundo: #07090c;
-  --fundo-alt: #0b0f14;
-  --superficie: #111820;
-  --superficie-2: #172230;
-  --hover: #1c2836;
-  --borda: #23303f;
-  --borda-forte: #35485e;
-  --texto: #f2f6f9;
-  --texto-suave: #93a4b5;
+  --lab-marca: #00793f;
+  --lab-marca-claro: #067c43;
+  --lab-marca-brilho: #12a866;
+  --lab-marca-texto: #e6f2ea;
 
-  /* Marca: so grafico e superficie. Ver a regra de marca no topo do arquivo. */
-  --marca: #00793f;
-  --marca-claro: #067c43;
-  --marca-brilho: #12a866;
-  --marca-texto: #e6f2ea;
-  --cod-chave: #7fe0a8;
+  --lab-vuln: #f87171;
+  --lab-vuln-fundo: rgba(248, 113, 113, 0.12);
+  --lab-vuln-borda: rgba(248, 113, 113, 0.42);
 
-  --vuln: #f87171;
-  --vuln-fundo: rgba(248, 113, 113, 0.12);
-  --vuln-borda: rgba(248, 113, 113, 0.45);
+  --lab-safe: #4ade80;
+  --lab-safe-fundo: rgba(74, 222, 128, 0.12);
+  --lab-safe-borda: rgba(74, 222, 128, 0.42);
 
-  --safe: #4ade80;
-  --safe-fundo: rgba(74, 222, 128, 0.12);
-  --safe-borda: rgba(74, 222, 128, 0.45);
+  --lab-alerta: #fbbf24;
 
-  --acento: var(--vuln);
-  --acento-fundo: var(--vuln-fundo);
-  --acento-borda: var(--vuln-borda);
-  --raio: 10px;
-  --sombra: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --lab-raio: var(--raio);
+  --lab-sombra: 0 12px 34px rgba(0, 0, 0, 0.4);
+
+  /* A barra e baixa de proposito. Ela e a referencia de "isto aqui nao e o
+     site": quanto mais fina, menos ela se confunde com o cabecalho do app logo
+     abaixo. */
+  --lab-barra-altura: 34px;
 }
 
 html[data-modo="vuln"] {
-  --acento: var(--vuln);
-  --acento-fundo: var(--vuln-fundo);
-  --acento-borda: var(--vuln-borda);
+  --lab-acento: var(--lab-vuln);
+  --lab-acento-fundo: var(--lab-vuln-fundo);
+  --lab-acento-borda: var(--lab-vuln-borda);
 }
 
 html[data-modo="safe"] {
-  --acento: var(--safe);
-  --acento-fundo: var(--safe-fundo);
-  --acento-borda: var(--safe-borda);
+  --lab-acento: var(--lab-safe);
+  --lab-acento-fundo: var(--lab-safe-fundo);
+  --lab-acento-borda: var(--lab-safe-borda);
 }
 
-* {
-  box-sizing: border-box;
+/**
+ * Fundo e link do chrome.
+ *
+ * O seletor e `body:not([data-app])` de proposito. Estas duas regras sao
+ * genericas demais para valerem em toda pagina: um link verde-esverdeado dentro
+ * do FinBank seria um pixel de ferramenta no meio do produto. Como as paginas de
+ * app declaram `data-app="finbank"` ou `data-app="cheflab"` no <body>, e as
+ * ferramentas (lancador e console) nao declaram nada, `:not([data-app])` separa
+ * as duas familias sem inventar uma classe a mais para isso.
+ *
+ * As paginas de app trazem base.css + a sua propria folha, que definem fundo,
+ * cor e cor de link. Aqui so entram as telas de ferramenta.
+ */
+body:not([data-app]) {
+  background: var(--lab-fundo);
+  color: var(--lab-texto);
 }
 
-body {
-  margin: 0;
-  font-family: var(--fonte);
-  background: var(--fundo);
-  color: var(--texto);
-  line-height: 1.55;
-  min-height: 100vh;
-}
-
-a {
-  color: var(--marca-texto);
-  text-decoration-color: rgba(0, 121, 63, 0.55);
+body:not([data-app]) a {
+  color: var(--lab-marca-texto);
+  text-decoration-color: rgba(0, 121, 63, 0.6);
   text-underline-offset: 3px;
 }
 
-a:hover {
-  text-decoration-color: var(--marca-brilho);
+body:not([data-app]) a:hover {
+  text-decoration-color: var(--lab-marca-brilho);
 }
 
 /* -------------------------------------------------------------------------- */
-/* Estrutura                                                                  */
+/* Barra fina                                                                 */
 /* -------------------------------------------------------------------------- */
 
-.container {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 0 20px 56px;
-}
-
-/* O topo reproduz a estetica do cabecalho institucional: fundo quase preto,
-   verde concentrado a esquerda e brancografia a esquerda. O verde entra so
-   como wash e filete, entao o badge de modo continua legivel a distancia. */
-.topo {
-  position: relative;
+/**
+ * A barra do laboratorio fica acima do app e diz so tres coisas: em que oficina
+ * estamos, em que app, e em que modo. Nada mais -- nenhum nome de cenario, nenhum
+ * numero de etapa. Quem conduz le o roteiro no console /palco; o projetor mostra
+ * o app.
+ */
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--lab-barra-altura);
   background:
-    radial-gradient(130% 180% at 0% 50%, rgba(0, 121, 63, 0.3), transparent 60%),
-    linear-gradient(180deg, var(--fundo-alt), var(--fundo));
-  border-bottom: 1px solid var(--borda);
-  margin-bottom: 28px;
+    radial-gradient(120% 200% at 0% 50%, rgba(0, 121, 63, 0.26), transparent 62%),
+    linear-gradient(180deg, var(--lab-fundo-alt), var(--lab-fundo));
+  border-bottom: 1px solid var(--lab-borda);
+  /* A lateral esquerda carrega a cor do modo. E o sinal de leitura a distancia:
+     a plateia ve a barra mudar de vermelho para verde sem precisar ler nada. */
+  box-shadow: inset 3px 0 0 0 var(--lab-acento);
+  font-size: var(--t-13);
 }
 
-.topo::before {
+.barra::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  inset: 0 0 auto;
   height: 2px;
   background: linear-gradient(
     90deg,
-    var(--marca-claro),
-    var(--marca-brilho) 38%,
-    transparent 78%
+    var(--lab-marca-claro),
+    var(--lab-marca-brilho) 36%,
+    transparent 76%
   );
 }
 
-.topo__interno {
-  max-width: 1080px;
+.barra__interno {
+  height: 100%;
+  max-width: var(--largura);
   margin: 0 auto;
-  padding: 18px 20px;
+  padding: 0 var(--e-5);
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--e-3);
 }
 
-.topo__marca {
+.barra__marca {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--e-2);
+  color: var(--lab-texto);
   text-decoration: none;
-  color: var(--texto);
+  white-space: nowrap;
 }
 
-/* Recorte de 554x654 do escudo original: a altura define o tamanho e a
-   largura vem da proporcao, para o escudo nunca aparecer esticado. */
-.topo__escudo {
+/* Recorte de 554x654 do escudo original: a altura define o tamanho e a largura
+   vem da proporcao, para o escudo nunca aparecer esticado. */
+.barra__escudo {
   flex: none;
-  width: 34px;
-  height: 40px;
+  width: 14px;
+  height: 16px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
-.topo__marca strong {
-  font-size: 1.15rem;
+.barra__titulo {
+  font-weight: 700;
   letter-spacing: 0.2px;
 }
 
-.topo__marca span {
-  color: var(--texto-suave);
-  font-size: 0.85rem;
+.barra__contexto {
+  color: var(--lab-texto-suave);
+  padding-left: var(--e-3);
+  margin-left: var(--e-1);
+  border-left: 1px solid var(--lab-borda-forte);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.topo__acoes {
+.barra__contexto b {
+  color: var(--lab-texto);
+  font-weight: 600;
+}
+
+.barra__acoes {
+  margin-left: auto;
   display: flex;
-  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.titulo-secao {
-  font-size: 1.45rem;
-  margin: 0 0 6px;
-}
-
-.subtitulo-secao {
-  color: var(--texto-suave);
-  margin: 0 0 22px;
-}
-
-.rodape {
-  margin-top: 44px;
-  padding-top: 18px;
-  border-top: 1px solid var(--borda);
-  color: var(--texto-suave);
-  font-size: 0.82rem;
+  gap: var(--e-2);
 }
 
 /* -------------------------------------------------------------------------- */
-/* Grade e cartoes                                                            */
+/* Controle de modo                                                           */
 /* -------------------------------------------------------------------------- */
 
-.grade {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 18px;
+/**
+ * Segmento de duas posicoes. O estado ativo e a unica coisa colorida do lado
+ * direito da barra, e usa --lab-acento.
+ */
+.modo-controle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--lab-borda-forte);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
 }
 
-.cartao {
-  background: var(--superficie);
-  border: 1px solid var(--borda);
-  border-top: 3px solid var(--acento);
-  border-radius: var(--raio);
-  padding: 20px;
-  box-shadow: var(--sombra);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.modo-opcao {
+  padding: 3px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lab-texto-suave);
+  font-size: var(--t-12);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--duracao), color var(--duracao);
 }
 
-.cartao h3 {
-  margin: 0;
-  font-size: 1.1rem;
+.modo-opcao:hover {
+  color: var(--lab-texto);
 }
 
-.cartao p {
-  margin: 0;
-  color: var(--texto-suave);
-  font-size: 0.9rem;
+.modo-opcao[aria-pressed="true"] {
+  background: var(--lab-acento-fundo);
+  border-color: var(--lab-acento-borda);
+  color: var(--lab-acento);
 }
 
-.cartao__rodape {
-  margin-top: auto;
-  padding-top: 12px;
+.modo-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--lab-acento-borda);
+  background: var(--lab-acento-fundo);
+  color: var(--lab-acento);
+  font-size: var(--t-12);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.lista-cenarios {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.86rem;
-  color: var(--texto-suave);
-}
-
-.lista-cenarios li::before {
-  content: "\25B8";
-  color: var(--acento);
-  margin-right: 8px;
-}
-
-.lista-cenarios code {
-  color: var(--texto);
+.modo-selo::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lab-acento);
 }
 
 /* -------------------------------------------------------------------------- */
-/* Botoes                                                                     */
+/* Botoes do chrome                                                           */
 /* -------------------------------------------------------------------------- */
 
 .botao {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 15px;
-  border-radius: 8px;
-  border: 1px solid var(--borda-forte);
-  background: var(--superficie-2);
-  color: var(--texto);
-  font: inherit;
-  font-size: 0.88rem;
+  justify-content: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+  padding: 0 var(--e-4);
+  border: 1px solid var(--lab-borda-forte);
+  border-radius: var(--raio-sm);
+  background: var(--lab-superficie-2);
+  color: var(--lab-texto);
+  font-size: var(--t-14);
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  transition: background var(--duracao), border-color var(--duracao),
+    transform 60ms;
 }
 
 .botao:hover {
-  background: var(--hover);
-  border-color: var(--acento-borda);
+  background: var(--lab-hover);
+  border-color: var(--lab-acento-borda);
 }
 
 .botao:active {
@@ -283,405 +292,337 @@ a:hover {
   cursor: progress;
 }
 
-.botao--primario {
-  background: var(--acento-fundo);
-  border-color: var(--acento-borda);
-  color: var(--acento);
-  font-weight: 600;
+.botao--mini {
+  min-height: 26px;
+  padding: 0 var(--e-3);
+  font-size: var(--t-12);
+  border-radius: var(--raio-sm);
 }
 
-.botao--perigo {
-  border-color: rgba(248, 113, 113, 0.5);
-  color: var(--vuln);
+.botao--primario {
+  background: var(--lab-acento-fundo);
+  border-color: var(--lab-acento-borda);
+  color: var(--lab-acento);
+  font-weight: 700;
 }
 
 .botao--bloco {
   width: 100%;
-  justify-content: center;
+}
+
+.botao--perigo {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: var(--lab-vuln);
 }
 
 /* -------------------------------------------------------------------------- */
-/* Controle de modo (DAS, secao 3)                                            */
+/* Lancador da oficina (raiz /)                                               */
 /* -------------------------------------------------------------------------- */
 
-.modo-controle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px;
-  border: 1px solid var(--borda);
-  border-radius: 999px;
-  background: var(--fundo-alt);
-}
-
-.modo-controle__rotulo {
-  padding-left: 10px;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--texto-suave);
-}
-
-.modo-opcao {
-  padding: 6px 16px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--texto-suave);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.modo-opcao:hover {
-  color: var(--texto);
-}
-
-.modo-opcao[aria-pressed="true"] {
-  background: var(--acento-fundo);
-  border-color: var(--acento-borda);
-  color: var(--acento);
-}
-
-.modo-selo {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 13px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  background: var(--acento-fundo);
-  border: 1px solid var(--acento-borda);
-  color: var(--acento);
-}
-
-.modo-selo::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--acento);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Avisos e hints de roteiro                                                  */
-/* -------------------------------------------------------------------------- */
-
-.aviso {
+.oficina-cabecalho {
+  padding: var(--e-7) 0 var(--e-6);
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 13px 16px;
-  border-radius: var(--raio);
-  border: 1px solid var(--acento-borda);
-  background: var(--acento-fundo);
-  font-size: 0.88rem;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: var(--e-4);
 }
 
-.aviso strong {
+.oficina-cabecalho__escudo {
+  flex: none;
+  width: 46px;
+  height: 54px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.6));
+}
+
+.oficina-cabecalho h1 {
+  font-size: var(--t-28);
+  letter-spacing: -0.01em;
+}
+
+.oficina-cabecalho p {
+  margin-top: var(--e-1);
+  color: var(--lab-texto-suave);
+  font-size: var(--t-14);
+}
+
+.oficina-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--e-4);
+}
+
+.oficina-cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+  padding: var(--e-5);
+  background: var(--lab-superficie);
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio);
+  box-shadow: var(--lab-sombra);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--duracao), transform var(--duracao);
+}
+
+.oficina-cartao:hover {
+  border-color: var(--lab-borda-forte);
+  transform: translateY(-2px);
+}
+
+.oficina-cartao h2 {
+  font-size: var(--t-22);
+}
+
+.oficina-cartao p {
+  color: var(--lab-texto-suave);
+  font-size: var(--t-14);
+}
+
+.oficina-cartao__rodape {
+  margin-top: auto;
+  padding-top: var(--e-3);
+  font-size: var(--t-13);
+  color: var(--lab-texto-suave);
+}
+
+.oficina-secao {
+  margin-top: var(--e-6);
+  padding: var(--e-5);
+  background: var(--lab-superficie);
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio);
+}
+
+.oficina-secao h2 {
+  font-size: var(--t-13);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lab-texto-suave);
+  margin-bottom: var(--e-4);
+}
+
+.oficina-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-3);
+}
+
+.oficina-aviso {
+  display: flex;
+  gap: var(--e-3);
+  margin-top: var(--e-5);
+  padding: var(--e-3) var(--e-4);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: var(--raio);
+  background: rgba(251, 191, 36, 0.08);
+  color: var(--lab-texto-suave);
+  font-size: var(--t-13);
+}
+
+.oficina-aviso strong {
+  color: var(--lab-alerta);
   display: block;
   margin-bottom: 2px;
 }
-
-.aviso--neutro {
-  border-color: var(--borda);
-  background: var(--fundo-alt);
-}
-
-.painel {
-  background: var(--superficie);
-  border: 1px solid var(--borda);
-  border-radius: var(--raio);
-  padding: 18px 20px;
-  margin-bottom: 20px;
-}
-
-.painel__titulo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  color: var(--texto-suave);
-  margin-bottom: 12px;
-}
-
-/* Roteiro do cenario: o payload pronto, URL-encoded, para colar no campo. */
-.roteiro {
-  border-left: 3px solid var(--marca);
-  background: var(--fundo-alt);
-  border-radius: 0 var(--raio) var(--raio) 0;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-}
-
-.roteiro__titulo {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  color: var(--marca-texto);
-  margin-bottom: 8px;
-}
-
-.roteiro p {
-  margin: 0 0 8px;
-  font-size: 0.86rem;
-  color: var(--texto-suave);
-}
-
-.roteiro .botao {
-  margin-top: 10px;
-}
-
-.payload {
-  display: block;
-  width: 100%;
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  color: #dbe6ef;
-  background: #0a0e13;
-  border: 1px solid var(--borda);
-  border-radius: 8px;
-  padding: 10px 12px;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  user-select: all;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Formularios                                                                */
-/* -------------------------------------------------------------------------- */
-
-.linha-form {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  margin-bottom: 16px;
-}
-
-.rotulo {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--texto-suave);
-  margin-bottom: 5px;
-}
-
-.campo {
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--texto);
-  background: var(--fundo-alt);
-  border: 1px solid var(--borda-forte);
-  border-radius: 8px;
-  padding: 9px 12px;
-  min-width: 240px;
-}
-
-.campo:focus {
-  outline: 2px solid var(--acento-borda);
-  outline-offset: 1px;
-  border-color: var(--acento);
-}
-
-textarea.campo {
-  min-width: 100%;
-  min-height: 84px;
-  resize: vertical;
-}
-
-.campo-largo {
-  flex: 1;
-  min-width: 0;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Tabelas e resultados                                                       */
-/* -------------------------------------------------------------------------- */
-
-.tabela-rolagem {
-  overflow-x: auto;
-  border: 1px solid var(--borda);
-  border-radius: var(--raio);
-}
-
-table.tabela {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.87rem;
-}
-
-table.tabela th,
-table.tabela td {
-  padding: 9px 13px;
-  text-align: left;
-  border-bottom: 1px solid var(--borda);
-  white-space: nowrap;
-}
-
-table.tabela th {
-  background: var(--superficie-2);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--texto-suave);
-}
-
-table.tabela tbody tr:last-child td {
-  border-bottom: none;
-}
-
-table.tabela tbody tr:hover td {
-  background: rgba(56, 189, 248, 0.05);
-}
-
-.vazio {
-  color: var(--texto-suave);
-  font-size: 0.88rem;
-  font-style: italic;
-  padding: 14px 2px;
-}
-
-/* JSON bruto: onde o aluno enxerga o vazamento do UNION e do XPATH error. */
-pre.json {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 0.79rem;
-  line-height: 1.5;
-  color: #d6e3ec;
-  background: #0a0e13;
-  border: 1px solid var(--borda);
-  border-radius: var(--raio);
-  padding: 14px;
-  max-height: 340px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-pre.json .chave {
-  color: var(--cod-chave);
-}
-
-.resposta-erro {
-  border: 1px solid var(--vuln-borda);
-  background: var(--vuln-fundo);
-  border-radius: var(--raio);
-  padding: 15px 17px;
-}
-
-.resposta-erro h3 {
-  margin: 0 0 8px;
-  font-size: 0.95rem;
-  color: var(--vuln);
-}
-
-.resposta-erro p {
-  margin: 0;
-  font-size: 0.88rem;
-}
-
-.destaque-vazamento {
-  font-family: var(--mono);
-  font-size: 0.86rem;
-  color: var(--vuln);
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 6px;
-  padding: 2px 7px;
-}
-
-/* -------------------------------------------------------------------------- */
-/* ChefLab - lista de comentarios                                             */
-/* -------------------------------------------------------------------------- */
-
-.comentarios {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.comentario {
-  background: var(--fundo-alt);
-  border: 1px solid var(--borda);
-  border-left: 3px solid var(--acento);
-  border-radius: 0 var(--raio) var(--raio) 0;
-  padding: 12px 16px;
-}
-
-.comentario__autor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px;
-  margin: 0 0 6px;
-  font-size: 0.88rem;
-}
-
-.comentario__autor strong {
-  font-size: 0.95rem;
-}
-
-.comentario__autor time {
-  color: var(--texto-suave);
-  font-size: 0.78rem;
-  font-family: var(--mono);
-}
-
-.comentario__texto {
-  margin: 0;
-  font-size: 0.92rem;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Utilitarios                                                                */
-/* -------------------------------------------------------------------------- */
 
 .pill {
   display: inline-block;
   padding: 2px 9px;
   border-radius: 999px;
-  font-size: 0.74rem;
+  border: 1px solid var(--lab-borda);
+  background: var(--lab-superficie-2);
+  color: var(--lab-texto-suave);
+  font-family: var(--mono);
+  font-size: var(--t-12);
   font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Console do instrutor (/palco)                                              */
+/* -------------------------------------------------------------------------- */
+
+.palco-cabecalho {
+  padding: var(--e-6) 0 var(--e-5);
+}
+
+.palco-cabecalho h1 {
+  font-size: var(--t-22);
+}
+
+.palco-cabecalho p {
+  margin-top: var(--e-2);
+  max-width: 68ch;
+  color: var(--lab-texto-suave);
+  font-size: var(--t-14);
+}
+
+.palco-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--e-4);
+  align-items: start;
+  padding-bottom: var(--e-7);
+}
+
+.palco-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  min-width: 0;
+}
+
+.palco-painel {
+  padding: var(--e-4);
+  background: var(--lab-superficie);
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio);
+}
+
+.palco-painel > h2 {
+  font-size: var(--t-13);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lab-texto-suave);
+  margin-bottom: var(--e-3);
+}
+
+.palco-painel > h2 + p {
+  color: var(--lab-texto-suave);
+  font-size: var(--t-13);
+  margin-bottom: var(--e-3);
+}
+
+/* Passo do roteiro: numero grande + texto, para quem conduz ler de longe. */
+.passo {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: var(--e-3);
+  padding: var(--e-3) 0;
+  border-top: 1px solid var(--lab-borda);
+}
+
+.passo:first-of-type {
+  border-top: 0;
+}
+
+.passo__num {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--lab-acento-borda);
+  background: var(--lab-acento-fundo);
+  color: var(--lab-acento);
+  font-size: var(--t-13);
+  font-weight: 700;
+}
+
+.passo__texto {
+  font-size: var(--t-14);
+  color: var(--lab-texto-suave);
+}
+
+.passo__texto b {
+  color: var(--lab-texto);
+}
+
+.passo__texto code {
+  font-size: var(--t-13);
+  color: var(--lab-marca-texto);
+}
+
+/* Paleta de payloads: cada linha e um payload pronto, com copiar. */
+.payload-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--e-2);
+  padding: var(--e-2) 0;
+  border-top: 1px solid var(--lab-borda);
+}
+
+.payload-linha:first-of-type {
+  border-top: 0;
+}
+
+.payload-linha__rotulo {
+  display: block;
+  font-size: var(--t-12);
+  color: var(--lab-texto-suave);
+  margin-bottom: 3px;
+}
+
+.payload-linha code {
+  display: block;
+  font-size: var(--t-13);
+  line-height: 1.5;
+  color: #d8e4ee;
+  background: #080a0e;
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio-sm);
+  padding: var(--e-2) var(--e-3);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* Inspetor: status + JSON da ultima sondagem. */
+.inspetor-status {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  margin-bottom: var(--e-3);
+  flex-wrap: wrap;
+}
+
+.inspetor-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.inspetor-campo span {
+  font-size: var(--t-12);
+  color: var(--lab-texto-suave);
+}
+
+.inspetor-campo input,
+.inspetor-campo select {
+  min-height: var(--toque);
+  padding: 0 var(--e-3);
   font-family: var(--mono);
-  background: var(--superficie-2);
-  border: 1px solid var(--borda);
-  color: var(--texto-suave);
+  font-size: var(--t-13);
+  color: var(--lab-texto);
+  background: var(--lab-fundo-alt);
+  border: 1px solid var(--lab-borda-forte);
+  border-radius: var(--raio-sm);
 }
 
-.oculto {
-  display: none !important;
+.inspetor-json {
+  margin: var(--e-3) 0 0;
+  padding: var(--e-3);
+  font-size: var(--t-13);
+  line-height: 1.55;
+  color: #d8e4ee;
+  background: #080a0e;
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio-sm);
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.mono {
-  font-family: var(--mono);
+.inspetor-json--vazio {
+  color: var(--lab-texto-suave);
+  font-style: italic;
 }
 
-.suave {
-  color: var(--texto-suave);
-}
-
-@media (max-width: 620px) {
-  .topo__interno {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .campo {
-    min-width: 0;
-    width: 100%;
+@media (max-width: 900px) {
+  .palco-grade {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

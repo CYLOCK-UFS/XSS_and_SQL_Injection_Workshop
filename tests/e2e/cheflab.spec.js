@@ -72,7 +72,7 @@ async function abrir(page, modo) {
   const resposta = await page.request.post('/api/mode', { data: { mode: modo } });
   expect(resposta.ok()).toBeTruthy();
 
-  await page.goto('/receitas/receitas.html');
+  await page.goto('/cheflab/receita');
   await page.waitForLoadState('networkidle');
 }
 

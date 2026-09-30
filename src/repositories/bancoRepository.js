@@ -122,6 +122,54 @@ export async function buscarExtrato(idConta, { labMode, executor = executorPadra
 }
 
 /**
+ * Leitura de apoio do cliente logado (DAS v2.3, secao 4).
+ *
+ * `GET /banco/cliente/:id` alimenta o cartao de conta do autoatendimento. Nao
+ * existe cenario de injecao aqui, e por isso a funcao NAO recebe `labMode`:
+ * so existe uma implementacao, e ela e parametrizada. Nao dar ao script a
+ * chance de montar texto com o id seria o mesmo trabalho de novo, sem o
+ * exercicio que justifica o risco.
+ *
+ * O id tem o formato de `clientes.id_cliente` (`CLI001`) e so de leitura: e o
+ * numero da conta que o banco mostrou na tela anterior, nunca algo digitado em
+ * um campo de busca.
+ *
+ * @returns {Promise<LinhaSql | null>}
+ */
+export async function buscarCliente(idCliente, { executor = executorPadrao } = {}) {
+  return ler(executor, async (exec) => {
+    const [rows] = await exec.execute(
+      'SELECT id_cliente, nome, cpf, numero_telefone, saldo_conta FROM clientes WHERE id_cliente = ?',
+      [idCliente],
+    );
+    const linhas = /** @type {LinhasSql} */ (rows);
+    return linhas[0] || null;
+  });
+}
+
+/**
+ * Listagem de comunicados do banco (DAS v2.3, secao 4).
+ *
+ * `GET /banco/comunicados` monta o mural do autoatendimento. E a origem dos
+ * links de `/finbank/noticia`: quem clica chega em `/banco/noticia?id=<id>`,
+ * que e a rota do cenario 3.
+ *
+ * A coluna `conteudo` fica de fora de proposito. O mural mostra titulo e data;
+ * o texto so aparece na pagina do comunicado, e traz-lo aqui duplicaria o
+ * corpo do artigo na resposta sem nenhum ganho na tela.
+ *
+ * @returns {Promise<LinhasSql>}
+ */
+export async function listarComunicados({ executor = executorPadrao } = {}) {
+  return ler(executor, async (exec) => {
+    const [rows] = await exec.execute(
+      'SELECT id, titulo, data_publicacao FROM noticias ORDER BY data_publicacao DESC, id DESC',
+    );
+    return /** @type {LinhasSql} */ (rows);
+  });
+}
+
+/**
  * Cenario 3 - SQLi inferencial/cega (DAS 4.3).
  * Oraculo: noticia (HTTP 200) versus 404.
  *

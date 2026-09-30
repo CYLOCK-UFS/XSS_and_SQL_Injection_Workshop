@@ -22,6 +22,39 @@ O número de versão do título permanece v2.2 para não invalidar as referênci
 - §7: a resposta de /api/reset é 200 com {ok, message, tabelas}; a restrição "não expor detalhes de banco" cobre erro de SQL, schema, credencial e stack, e não a contagem operacional de tabelas nem o campo banco de /api/health.
 - §9: a árvore de pastas passa a listar src/app.js e src/types/.
 
+### v2.3 — redesenho das telas (vêm depois das correções acima)
+
+O redesenho não toca nos contratos de vulnerabilidade: muda onde as telas moram
+e o que existe em volta delas.
+
+- URLs dos aplicativos: /finbank, /finbank/agencias, /finbank/extrato,
+  /finbank/comunicados, /finbank/noticia, /cheflab e /cheflab/receita. Os
+  arquivos passaram de src/public/banco/ e src/public/receitas/ para
+  src/public/finbank/ e src/public/cheflab/. Os caminhos antigos seguem como
+  alias no mapa de rotas de src/app.js.
+- Novo: / é o lançador da oficina e /palco é o console do instrutor. O console
+  concentra roteiro, payloads com botão de copiar, inspetor de GET e saúde do
+  banco. Ele é a única tela autorizada a mostrar o gabarito.
+- Nenhuma tela de aluno explica o ataque. O texto didático foi para o console,
+  não para o produto.
+- Novos endpoints de apoio, parametrizados e sem versão vulnerável por decisão
+  de projeto: GET /banco/cliente/:id (conta do cabeçalho) e
+  GET /banco/comunicados (mural). O bloco de aceite T11 existe para travar essa
+  decisão.
+- 404 por aplicativo: /finbank/* devolve a página 404 do FinBank e /cheflab/* a
+  do ChefLab quando o Accept é text/html; as rotas /banco/* continuam JSON para
+  qualquer cliente. A negociação é por header, não por extensão de arquivo.
+- innerHTML: o cliente inteiro tem uma única ocorrência, em src/public/cheflab/
+  receita.js, e é o sink do cenário 4. Os ícones SVG do FinBank são criados com
+  createElementNS justamente para não gastar essa palavra.
+- Aparência: a paleta de cada aplicativo é fixa e igual nos dois modos (o modo
+  aparece no acento do chrome, não na cor da página); as regras globais de corpo
+  e link de lab.css são escopadas com body:not([data-app]) para não vazar para
+  dentro dos aplicativos.
+- Trocar de modo recarrega a página dos aplicativos, porque o backend decide o
+  que cada tela renderiza. No console não recarrega: o roteiro selecionado
+  sobrevive à troca.
+
 O PDF anexo é o export v2.2 e precede estas correções; este .txt é a fonte corrigida.
 
 ## 1. Escopo e arquitetura
@@ -65,6 +98,8 @@ PAGINA 2 de 6
 | /banco/extrato | SQLi baseada em erro (didática) | GET id_conta | Erro MySQL exibido somente no vulnerável | Prepared Statement + erro genérico |
 | /banco/noticia | SQLi inferencial/cega | GET id | Notícia / 404 como oráculo | Validação + Prepared Statement |
 | /receitas | XSS armazenado | POST comentário | Comentário persistido | textContent ou sanitização |
+| /banco/cliente/:id | nenhuma | — | Endpoint de apoio | Sempre parametrizado |
+| /banco/comunicados | nenhuma | — | Endpoint de apoio | Sempre parametrizado |
 
 4.1 /banco/agencias Modo vulnerável: SELECT de quatro colunas filtradas por cidade. Modo safe: placeholder e connection.execute(sql, [cidade]).
 
@@ -159,13 +194,20 @@ projeto-palestra-seguranca/
 ├── src/repositories/bancoRepository.js
 ├── src/repositories/receitasRepository.js
 ├── src/types/
-├── src/public/banco/
-├── src/public/receitas/
+├── src/public/index.html          lançador da oficina
+├── src/public/palco.html          console do instrutor
+├── src/public/finbank/            telas do autoatendimento (cenários 1 a 3)
+├── src/public/cheflab/            telas do portal de receitas (cenário 4)
 ├── src/public/css/
 ├── src/public/js/
 ├── src/public/img/
 ├── tests/
 └── package.json
+
+As duas últimas linhas de src/public/ são o resultado do redesenho: os
+arquivos passaram de public/banco/ e public/receitas/ para public/finbank/ e
+public/cheflab/, e as URLs limpas /finbank/… e /cheflab/… são servidas pelo mapa
+de rotas de src/app.js, que mantém os caminhos antigos como alias.
 
 ## 10. Plano de testes de aceitação
 
@@ -185,6 +227,8 @@ PAGINA 5 de 6
 | T07 | ChefLab | Comentário com marcação HTML | Vulnerável interpreta; safe trata como texto/sanitiza. |
 | T08 | Reset | POST /api/reset | Todo o banco volta ao estado inicial. |
 | T09 | Isolamento | Tentativa de acesso externo | Serviço não deve ser disponibilizado fora da rede de laboratório. |
+| T10 | Invariantes | Reset serializado, corrida reset/leitura, query string como texto | Não vêm do DAS: são as condições para uma apresentação ao vivo não quebrar sozinha. |
+| T11 | Leituras de apoio | GET /banco/cliente/:id e GET /banco/comunicados | Resposta idêntica nos dois modos, sem chave detalhes, id malformado devolve 404 e não 500. |
 
 ## 11. Critérios de aceitação
 
@@ -205,6 +249,10 @@ O modo seguro usa parametrização e não expõe detalhes de banco.
 O XSS é reproduzível no vulnerável e neutralizado no seguro.
 
 O laboratório usa somente dados sintéticos e não é publicado externamente.
+
+As telas dos aplicativos não contêm explicação didática; o roteiro e os payloads ficam em /palco.
+
+Um caminho inexistente de aplicativo devolve o 404 do próprio aplicativo quando o Accept é text/html, e as rotas /banco/* continuam JSON para qualquer cliente.
 
 ## 12. Referências técnicas
 

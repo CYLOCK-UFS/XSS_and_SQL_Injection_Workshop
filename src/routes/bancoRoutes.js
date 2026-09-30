@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import {
+  buscarCliente,
   buscarExtrato,
   buscarNoticia,
   listarAgencias,
   listarCidades,
+  listarComunicados,
 } from '../repositories/bancoRepository.js';
 import { LAB_MODE_VULN } from '../middleware/mode.js';
 
@@ -125,6 +127,45 @@ router.get('/noticia', async (req, res) => {
     noticia,
   });
 });
+
+/**
+ * Leitura da conta do cliente logado (DAS v2.3).
+ *
+ * Um autoatendimento mostra o nome e o saldo. Essas informacoes vem da tabela
+ * clientes, separadas do extrato. O id e uma string (CLI001). Nada e digitado
+ * pelo aluno nesta rota: e um GET puro, sem query string livre, e sem qualquer
+ * concatenacao de texto.
+ */
+router.get('/cliente/:id', async (req, res) => {
+  const idCliente = textoUnico(req.params.id);
+  const cliente = await buscarCliente(idCliente);
+
+  if (!cliente) {
+    res.status(404).json({
+      erro: 'Cliente nao encontrado.',
+    });
+    return;
+  }
+
+  res.json({
+    cliente,
+  });
+});
+
+/**
+ * Lista de comunicados para o mural do FinBank (DAS v2.3).
+ *
+ * Devolve apenas id, titulo e data_publicacao. A noticia completa fica no
+ * cenario 3 (/banco/noticia).
+ */
+router.get('/comunicados', async (req, res) => {
+  const comunicados = await listarComunicados();
+  res.json({
+    total: comunicados.length,
+    comunicados,
+  });
+});
+
 
 export default router;
 
