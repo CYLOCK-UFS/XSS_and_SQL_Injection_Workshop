@@ -61,7 +61,15 @@ body.app--cheflab::before {
   );
 }
 
-body.app--cheflab > * {
+/**
+ * Camada de conteudo acima da faixa luminosa.
+ *
+ * O `:where()` zera a contribuicao da classe na especificidade, e e o que
+ * permite a barra do laboratorio (lab.css, 0,1,0) manter `position: sticky`.
+ * Sem ele, `body.app--cheflab > *` vale (0,1,1) e rebaixa a barra e o
+ * cabecalho para `relative` -- ver o mesmo comentario em finbank.css.
+ */
+body:where(.app--cheflab) > * {
   position: relative;
   z-index: 1;
 }
@@ -161,6 +169,10 @@ body.app--cheflab > * {
   border: 1px solid var(--cl-borda);
   border-radius: var(--cl-raio);
   padding: var(--e-5);
+  /* Sem folga acima, a borda do bloco de comentarios encostava na ultima linha
+     do modo de preparo (medido: 0px) e a receita parecia ter um comentario a
+     mais. --e-6 e o mesmo respiro que separa o heroi do corpo da receita. */
+  margin-top: var(--e-6);
   margin-bottom: var(--e-4);
 }
 
@@ -172,6 +184,10 @@ body.app--cheflab > * {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
   gap: var(--e-4);
+  /* O cartao inteiro e o link para a receita, entao ele precisa de folga acima:
+     grudado na legenda (medido: 0px), o bloco de texto e o cartao formavam uma
+     unica mancha e o clique nao convivia com o paragrafo. */
+  margin-top: var(--e-6);
 }
 
 .cl-cartao {

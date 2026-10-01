@@ -349,6 +349,11 @@ body:not([data-app]) a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--e-4);
+  /* Sem esta margem os cartoes encostavam no aviso amarelo (folga medida: 0px):
+     as duas bordas de 1px ficavam vizinhas e a tela lia como um bloco só, em
+     vez de "aviso" e "os dois aplicativos". --e-6 e o mesmo respiro que ja
+     separa a grade da sessao, o que mantem o ritmo da pagina. */
+  margin-top: var(--e-6);
 }
 
 .oficina-cartao {
@@ -624,5 +629,47 @@ body:not([data-app]) a:hover {
 @media (max-width: 900px) {
   .palco-grade {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/**
+ * Barra do laboratorio em tela estreita.
+ *
+ * A barra tem altura fixa (--lab-barra-altura), e o `top:` do cabecalho de cada
+ * app aponta para esse valor. Entao a barra nao pode crescer nem quebrar linha:
+ * precisa CABER. Em 390px ela pedia 522px de conteudo contra 350px disponiveis, e
+ * a pagina inteira ganhava 156px de scroll horizontal nas sete telas de app.
+ *
+ * O que sai e o redundante: o nome da oficina (`Oficina SQLi e XSS`) e o nome do
+ * app, que o cabecalho do proprio aplicativo ja mostra em tamanho grande. O
+ * escudo fica, porque ele e a marca da ferramenta a um metro de distancia.
+ *
+ * O que fica e o inegociavel: o controle de modo. E a unica leitura do modo
+ * que existe fora do app, e sem ela o aluno nao tem como saber em que lado esta.
+ */
+@media (max-width: 620px) {
+  .barra__interno {
+    padding: 0 var(--e-3);
+    gap: var(--e-2);
+  }
+
+  .barra__titulo,
+  .barra__contexto {
+    display: none;
+  }
+
+  .barra__acoes {
+    margin-left: auto;
+  }
+
+  /* Os rotulos continuam sendo "Vulneravel" e "Seguro": encurtar o texto
+     economizaria mais espaco, mas mudaria a palavra que o DAS e o README usam
+     para nomear os dois lados da demonstracao. O que cede aqui e o respiro. */
+  .modo-opcao {
+    padding: 3px 7px;
+  }
+
+  .botao--mini {
+    padding: 0 var(--e-2);
   }
 }

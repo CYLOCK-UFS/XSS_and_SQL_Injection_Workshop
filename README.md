@@ -1,7 +1,7 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0.46-4479A1?logo=mysql&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-67%20unit%20%2B%2061%20E2E-6e5494)
+![Testes](https://img.shields.io/badge/testes-67%20unit%20%2B%2096%20E2E-6e5494)
 
 # FinBank & ChefLab
 
@@ -382,7 +382,7 @@ arquivo apagaria os dados que o outro está usando.
 | Comando | O que cobre | Precisa de MySQL |
 | --- | --- | --- |
 | `npm test` | 67 testes: aceite T01–T09 do DAS + T10/T11, unidade dos repositories, encaminhamento de erro | sim |
-| `npm run test:e2e` | 61 testes: XSS **executando**, oráculo SQLi, telas e URLs da oficina, console do instrutor | sim |
+| `npm run test:e2e` | 96 testes: XSS **executando**, oráculo SQLi, telas e URLs da oficina, console do instrutor, geometria da interface | sim |
 | `npm run typecheck` | `tsc --checkJs` sobre os `.js`, sem emitir nada | não |
 
 Para rodar as três de uma vez, na ordem certa e subindo o banco se ele ainda não
@@ -401,10 +401,22 @@ só evita ter que lembrar da ordem `docker compose up -d db` → `npm test` →
 `npm run test:e2e`.
 
 O E2E é a única camada que prova que o payload **chega a rodar**: a suíte de
-aceite confere que o `innerHTML` continua no fonte, o que é condição necessária
+aceitação confere que o `innerHTML` continua no fonte, o que é condição necessária
 e não suficiente — um `Content-Security-Policy` novo, ou um `innerHTML` que
 deixasse de interpolar o comentário, passariam por ela e quebrariam a
 demonstração ao vivo.
+
+`layout.spec.js` cobre uma terceira coisa que nenhuma das outras duas vê: onde os
+elementes **estão**. A suíte inteira passou verde com as sete telas de app sem
+nenhum cabeçalho grudado, porque `position: relative` no lugar de `sticky`
+responde 200, traz o texto certo e só falha quando alguém rola a página — aí a
+faixa que mostra o modo, que é a única leitura do modo fora do app, some da tela.
+Ele também trava o estouro horizontal: 348px de ações dentro de 350px úteis
+davam 156px de rolagem lateral a 390px de largura, e nenhuma verificação de
+conteúdo nota uma página que desliza para o lado. As medições são geométricas
+(`position`, `scrollWidth`, alturas) e não `toHaveScreenshot`, porque snapshot de
+fonte vira falso-negativo na máquina de quem roda em vez de apontar o código.
+
 
 Duas decisões do `playwright.config.js` que só apareceram por causa de
 problemas reais:
@@ -419,7 +431,7 @@ problemas reais:
   a ausência do Chromium empacotado e cai para `msedge`/`chrome`.
 
 ```bash
-npm run test:e2e                     # 61 testes
+npm run test:e2e                     # 96 testes
 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e   # fixa o navegador do sistema
 ```
 
@@ -463,6 +475,7 @@ tests/unit/                    repositories com executor falso; erro assíncrono
 tests/e2e/banco.spec.js        os três cenários de SQLi no navegador
 tests/e2e/cheflab.spec.js      XSS executando, nos dois sinks e nos dois modos
 tests/e2e/estrutura.spec.js    telas, URLs, barra e console do instrutor
+tests/e2e/layout.spec.js       posição dos cabeçalhos e estouro de largura
 tests/e2e/smoke.spec.js        navegador sobe e o inventário de URLs responde
 tsconfig.json                  checkJs, noEmit
 playwright.config.js           porta 3100; browser do sistema como reserva

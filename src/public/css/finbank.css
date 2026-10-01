@@ -68,7 +68,21 @@ body.app--finbank::before {
   );
 }
 
-body.app--finbank > * {
+/**
+ * Camada de conteudo acima da faixa luminosa.
+ *
+ * O `:where()` nao e enfeite: ele tira a classe da conta de especificidade, e
+ * sem ele esta regra vale (0,1,1) e rebaixa para `relative` as duas coisas que
+ * dependsem de `sticky` -- a barra do laboratorio (lab.css, 0,1,0) e este
+ * cabecalho (0,1,0). Como o chrome.js faz `document.body.prepend(barra)`, a
+ * barra e filha direta do <body> e cai neste `> *`; o resultado medido era
+ * `position: relative` nas sete telas do app, e a faixa que mostra o modo
+ * rolava para fora da tela.
+ *
+ * Os elementos sem regra concorrente nao perdem nada: `:where()` zera a
+ * especificidade desta regra, nao a aplicacao dela.
+ */
+body:where(.app--finbank) > * {
   position: relative;
   z-index: 1;
 }

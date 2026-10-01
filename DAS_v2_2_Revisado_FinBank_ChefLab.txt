@@ -55,7 +55,9 @@ e o que existe em volta delas.
   que cada tela renderiza. No console não recarrega: o roteiro selecionado
   sobrevive à troca.
 
-O PDF anexo é o export v2.2 e precede estas correções; este .txt é a fonte corrigida.
+Este arquivo é a fonte do DAS; o export em PDF e o script que o geravam foram
+removidos do repositório, então esta é a única cópia a atualizar quando algo
+mudar.
 
 ## 1. Escopo e arquitetura
 
