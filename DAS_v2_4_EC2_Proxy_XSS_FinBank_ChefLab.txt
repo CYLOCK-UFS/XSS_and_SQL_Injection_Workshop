@@ -1,0 +1,310 @@
+Documento de Arquitetura de Software (DAS) v2.4
+Lab FinBank & ChefLab — EC2 + Docker + Proxy Reverso + novos cenários de XSS
+Base: DAS v2.3 | Revisão técnica a partir dos feedbacks de Erick e Diogo
+
+1. Objetivo e escopo
+O Lab FinBank & ChefLab é um laboratório acadêmico de segurança de aplicações web executado em ambiente controlado. O objetivo é
+demonstrar SQL Injection por UNION, SQL Injection baseada em erro, SQL Injection inferencial/cega por condição booleana e XSS
+armazenado, seguidos das respectivas correções.
+A aplicação permanece um monólito modular em Node.js + Express + mysql2 e MySQL 8.0. A implantação de referência utiliza Amazon
+EC2, Docker e um proxy reverso centralizado.
+Cada aluno recebe uma stack independente, contendo sua própria aplicação e seu próprio MySQL. O proxy encaminha cada URL de aluno
+exclusivamente para a respectiva stack.
+Além dos cenários originais, o laboratório passa a incluir um segundo ponto de XSS armazenado no módulo FinBank, destinado a
+demonstrar acesso a cookies de laboratório e captura didática de eventos de teclado.
+
+2. Princípios arquiteturais
+Isolamento por aluno: containers, rede Docker, volume e banco próprios.
+Exposição mínima: somente o proxy publica portas na EC2; aplicação e MySQL permanecem internos.
+Dados sintéticos: todas as contas, cartões, senhas, cookies e campos usados nas demonstrações são fictícios.
+Reprodutibilidade: cada stack deve ser criada por Docker Compose e inicializada pelo banco de laboratório.
+Comparabilidade: cada vulnerabilidade possui comportamento vulnerável e mitigado.
+Segurança didática: os mecanismos de roubo de cookie e keylogging devem funcionar somente sobre dados/credenciais de laboratório.
+Escalabilidade: novas stacks de alunos devem poder ser criadas sem duplicar o código da aplicação.
+
+3. Topologia AWS/EC2
+Uma instância EC2 hospeda Docker, as stacks dos alunos e um proxy reverso como Nginx ou Traefik.
+Topologia: Internet → Security Group → EC2 → Proxy reverso → rede Docker do aluno → aplicação Node.js/Express → MySQL 8.0.
+Somente 80/TCP e 443/TCP devem ser publicados pelo proxy, conforme a configuração adotada. As portas internas 3000 e 3306 não
+devem ser publicadas no host.
+Cada stack pode reutilizar internamente as portas app:3000 e mysql:3306 porque possui rede Docker própria.
+Exemplo: aluno01.lab.exemplo → lab-aluno01-app; aluno02.lab.exemplo → lab-aluno02-app.
+
+4. Componentes e responsabilidades
+Security Group: controlar a superfície de entrada da EC2.
+Proxy reverso: TLS, roteamento por aluno e encaminhamento somente para aplicações.
+Node.js + Express: rotas, middleware, seleção de modo, renderização e tratamento de erros.
+mysql2: acesso ao MySQL; prepared statements no modo seguro.
+MySQL 8.0: persistência isolada por laboratório.
+Docker Compose: criação reproduzível das stacks.
+EC2: host dos containers e proxy.
+Console do instrutor: interface de apoio à apresentação, mostrando o estado do laboratório e os controles de navegação/mitigação.
+
+5. Isolamento por aluno
+Cada aluno recebe um identificador único, como aluno01. O identificador é utilizado na stack Docker, rede, volume, configuração do proxy
+e logs.
+Exemplo: lab-aluno01 → app + mysql + lab_aluno01_net; lab-aluno02 → app + mysql + lab_aluno02_net.
+A aplicação de um aluno não deve conseguir resolver ou acessar o MySQL de outro.
+Não devem ser usados mapeamentos públicos de portas apenas para separar alunos. O isolamento deve ocorrer pela rede Docker e pelo
+proxy.
+O reset de um aluno nunca pode executar operações no banco de outro aluno.
+
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 1
+
+6. Roteamento e console do instrutor
+A forma preferencial de acesso é por subdomínio: https://aluno01.lab.exemplo, https://aluno02.lab.exemplo etc.
+O proxy preserva caminhos e query strings, permitindo que as URLs didáticas continuem sendo /banco/agencias, /banco/extrato,
+/banco/noticia, /banco/perfil e /receitas.
+O console do instrutor deve armazenar, para cada ação/explicação, uma referência de navegação para a página exata do laboratório
+relacionada ao tópico.
+Quando o instrutor estiver em um tópico como 'Extrato', 'XSS/Cookies' ou 'XSS/Keylogger', o console deve oferecer uma ação 'Abrir página'
+ou equivalente que retorne diretamente à URL exata do laboratório/aluno que está sendo demonstrado.
+A referência deve incluir, quando necessário, host do aluno, caminho, query string e estado de apresentação. Exemplo conceitual:
+aluno01.lab.exemplo/banco/extrato?id_conta=98765.
+O console não deve construir URLs a partir de dados arbitrários fornecidos pelo navegador; deve usar uma lista de rotas conhecidas e o
+identificador do laboratório autorizado.
+
+7. Contrato de modo vulnerável × seguro
+O contrato anterior permanece: cookie lab_mode com valores vuln e safe, Path=/, middleware definindo req.labMode e POST /api/mode
+para alternância.
+O modo é isolado por domínio/stack. Alterar o modo de aluno01 não altera aluno02.
+No modo seguro, as consultas usam prepared statements, os erros são genéricos e a saída não confiável é tratada com textContent ou
+sanitização apropriada.
+No modo vulnerável, somente os comportamentos previstos no roteiro didático são habilitados.
+O modo não é mecanismo de segurança. A separação de rede, proxy e Security Group continua sendo responsável pelo isolamento.
+
+8. Novos cenários de XSS armazenado — FinBank
+O projeto passa a possuir um segundo ponto de XSS armazenado fora do ChefLab. A implementação recomendada é uma área de 'Perfil
+do cliente' dentro do FinBank.
+Rota GET: /banco/perfil?id_cliente=1. Rota POST: /banco/perfil.
+O formulário possui um campo persistente de descrição/biografia do perfil. No modo vulnerável, o conteúdo armazenado é renderizado de
+forma insegura; no modo seguro, é renderizado como texto ou sanitizado conforme o contrato.
+A página também contém campos explicitamente sintéticos para a demonstração, como 'Senha de laboratório' e 'Número de cartão de
+laboratório'. Esses campos não devem aceitar ou solicitar credenciais, cartões ou informações reais.
+O objetivo do ponto é permitir que um XSS armazenado execute código no contexto do laboratório e demonstre, de forma controlada,
+acesso a cookies não HttpOnly e captura de eventos de teclado nos campos de demonstração.
+
+9. Simulação de roubo de cookie
+O laboratório deve possuir um cookie de sessão didático, por exemplo `lab_session`, contendo somente um identificador sintético de
+laboratório. Ele não deve representar uma sessão real de produção nem carregar dados pessoais.
+No modo vulnerável, `lab_session` não deve possuir HttpOnly, para que a demonstração de XSS consiga observar `document.cookie`.
+No modo seguro, o cookie deve possuir HttpOnly. Quando HTTPS estiver sendo utilizado no ambiente remoto, também deve utilizar
+Secure; SameSite deve seguir a política definida pela aplicação.
+A mudança entre vuln e safe deve recriar/atualizar o cookie de acordo com o modo, para que a comparação seja observável durante a
+apresentação.
+Os valores do cookie devem ser descartáveis e não devem conceder acesso a serviços reais.
+
+10. Simulação de keylogger
+A página `/banco/perfil` deve conter campos de entrada de laboratório identificados de forma explícita, por exemplo `data-lab-input='senha'`
+e `data-lab-input='cartao'`.
+O cenário didático permite que o conteúdo XSS adicione listeners de teclado/input a esses campos e demonstre que JavaScript executado
+no mesmo contexto da página consegue observar os eventos.
+A demonstração deve registrar somente os eventos localmente na própria página/console do laboratório ou em um painel didático. Não
+deve enviar dados para serviços externos.
+O laboratório deve instruir os alunos a utilizar somente valores fictícios, como uma senha de demonstração e um número de cartão
+reservado para o exercício.
+No modo seguro, o XSS armazenado deve ser neutralizado e, portanto, não deve conseguir registrar os eventos.
+
+11. Regras de segurança dos novos cenários
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 2
+
+O objetivo é demonstrar impacto, não criar uma ferramenta de exfiltração real.
+Não implementar envio dos dados capturados para domínios externos.
+Não coletar cookies do navegador fora do domínio do laboratório.
+Não utilizar credenciais, cartões, tokens ou sessões reais.
+O console do instrutor deve deixar claro que os valores exibidos são de laboratório.
+Os testes de aceitação devem verificar que a execução ocorre somente dentro da stack do aluno.
+
+12. Contrato das rotas
+/banco/agencias — SQLi UNION — GET cidade — quatro colunas; safe com prepared statement.
+/banco/extrato — SQLi baseada em erro — GET id_conta — erro observável somente no vulnerável; safe com prepared statement e erro
+genérico.
+/banco/noticia — SQLi inferencial/cega — GET id — notícia/404 como oráculo; safe com validação complementar e prepared statement.
+/banco/perfil — XSS armazenado adicional — GET/POST id_cliente e descrição — vulnerável permite execução no contexto da página;
+safe trata o conteúdo como texto/sanitiza.
+/receitas — XSS armazenado original — POST comentário — vulnerável permite execução; safe neutraliza o conteúdo.
+As URLs não devem carregar o modo; query strings ficam reservadas aos parâmetros do cenário.
+
+13. Dicionário do banco de dados
+agencias: id_agencia VARCHAR(20) PK; nome_agencia VARCHAR(100); endereco VARCHAR(150); telefone VARCHAR(30); gerente
+VARCHAR(80); cidade VARCHAR(60).
+cartoes_credito: id_cartao VARCHAR(20) PK; titular VARCHAR(100); numero_cartao VARCHAR(30); cvv VARCHAR(10); validade
+VARCHAR(15).
+administradores: id_admin VARCHAR(20) PK; username VARCHAR(50); senha_hash VARCHAR(100); senha VARCHAR(50).
+clientes: id_cliente VARCHAR(20) PK; nome VARCHAR(100); cpf VARCHAR(20); numero_telefone VARCHAR(30); saldo_conta
+VARCHAR(30).
+extratos: id_lancamento VARCHAR(20) PK; id_conta VARCHAR(20); descricao VARCHAR(100); valor VARCHAR(30); data_lancamento
+VARCHAR(20).
+noticias: id VARCHAR(20) PK; titulo VARCHAR(150); conteudo TEXT; data_publicacao VARCHAR(20).
+comentarios_receita: id_comentario INT AUTO_INCREMENT PK; nome_autor VARCHAR(80); texto_comentario TEXT; data_postagem
+DATETIME.
+Para o novo perfil, recomenda-se adicionar uma tabela própria, evitando alterar a semântica de clientes: perfis_clientes: id_perfil INT
+AUTO_INCREMENT PK; id_cliente VARCHAR(20); descricao_perfil TEXT.
+O banco continua contendo somente dados sintéticos.
+
+14. Cenário 2 — SQLi baseada em erro no extrato
+Payload atualmente documentado: `98765' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT senha FROM administradores WHERE
+id_admin='1'))) --%20`.
+Para a apresentação, o roteiro deve preferir uma variante com prefixo numérico, sem `0x7e`, para tornar visualmente mais simples o motivo
+do erro: `98765' AND EXTRACTVALUE(1, CONCAT(1, (SELECT senha FROM administradores WHERE id_admin='1'))) --%20`.
+O `1` é um prefixo inteiro convertido em texto pela CONCAT; o resultado da expressão continua sendo usado como XPath. A intenção
+didática é produzir um locator XPath inválido e observar o erro.
+Importante: a sugestão de usar CAST deve ser tratada como alternativa experimental, não como comportamento garantido. Em MySQL,
+conversões como CAST de texto para tipos numéricos podem realizar coerção e gerar aviso em vez de exceção, dependendo da
+expressão e do SQL mode. Portanto, o roteiro oficial deve usar a variante que for comprovadamente reproduzível na imagem MySQL
+fixada.
+Se a equipe testar uma expressão específica com CAST e ela produzir a exceção desejada de forma estável na imagem adotada, ela pode
+ser adicionada como variante de apresentação, mantendo a versão reproduzível como referência principal.
+Após URL-decoding, `--%20` deve chegar ao SQL como `-- `. O proxy deve preservar a query string.
+
+15. Reset por aluno
+POST /api/reset significa reset completo do laboratório do aluno que fez a requisição, nunca reset global da turma.
+Exemplo: aluno01 → /api/reset → restaura somente aluno01; aluno02 → /api/reset → restaura somente aluno02.
+O reset restaura os comentários e os registros-base de todas as tabelas do laboratório, incluindo o novo estado de perfil.
+Qualquer reset administrativo de toda a turma pertence a uma ferramenta administrativa separada do endpoint da aplicação do aluno.
+
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 3
+
+POST /receitas/reset pode permanecer como alias com o mesmo escopo por aluno.
+
+16. Console do instrutor
+O console do instrutor passa a ter três responsabilidades diretamente relacionadas ao feedback recebido.
+1) Explicar a mitigação: ao selecionar 'Modo Seguro', o console deve apresentar um resumo das proteções aplicadas, por exemplo
+prepared statements, tratamento genérico de erros, neutralização de XSS, HttpOnly no cookie de sessão e demais medidas relevantes.
+2) Navegação contextual: cada tópico deve possuir uma referência para a página exata que o instrutor estava demonstrando. O botão de
+retorno deve reconstruir essa URL dentro do laboratório selecionado.
+3) Contexto do aluno: o console deve deixar explícito qual laboratório está sendo controlado, evitando que uma ação de navegação ou
+reset seja aplicada à stack errada.
+O console deve ser uma interface administrativa separada da aplicação vulnerável e não deve ficar acessível aos alunos por meio das rotas
+públicas do laboratório.
+
+17. Estrutura do repositório
+projeto-palestra-seguranca/
+■■■ docker/
+■ ■■■ app/Dockerfile
+■■■ compose/
+■ ■■■ docker-compose.student.yml
+■■■ proxy/
+■ ■■■ nginx.conf
+■ ■■■ templates/
+■■■ database/
+■ ■■■ init.sql
+■■■ src/
+■ ■■■ server.js
+■ ■■■ config/database.js
+■ ■■■ middleware/
+■ ■ ■■■ mode.js
+■ ■ ■■■ errorHandler.js
+■ ■■■ routes/
+■ ■ ■■■ bancoRoutes.js
+■ ■ ■■■ receitasRoutes.js
+■ ■ ■■■ labRoutes.js
+■ ■■■ repositories/
+■ ■■■ bancoRepository.js
+■ ■■■ receitasRepository.js
+■■■ public/
+■ ■■■ banco/
+■ ■ ■■■ perfil/
+■ ■■■ receitas/
+■■■ instructor-console/
+■■■ tests/
+■■■ .env.example
+■■■ package.json
+
+O console do instrutor deve possuir seu próprio módulo/interface e não compartilhar autenticação ou rotas administrativas com as páginas
+vulneráveis.
+
+18. Ciclo de implantação
+1. Atribuir identificador ao aluno.
+2. Criar app, MySQL, volume e rede exclusivos.
+3. Inicializar o banco.
+4. Registrar a rota/subdomínio no proxy.
+5. Executar healthcheck.
+6. Entregar a URL ao aluno.
+7. O instrutor seleciona o laboratório no console para demonstrações.
+8. Ao final, resetar, parar ou destruir a stack sem alterar as demais.
+
+19. Plano de testes de aceitação
+• T01 Provisionamento: criar stack e confirmar app + MySQL + volume + rede.
+• T02 Proxy: URL de aluno01 chega somente ao app de aluno01.
+• T03 Isolamento: aluno01 não acessa app/MySQL de aluno02.
+• T04 Portas: 3000/3306 não estão públicas.
+• T05 Modo vuln/safe: alternância por cookie funciona e é isolada por aluno.
+• T06 Agências: consulta normal e UNION no vuln; prepared statement no safe.
+
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 4
+
+• T07 Extrato: variante numérica do ExtractValue reproduz o erro na imagem MySQL fixada; safe não expõe detalhes.
+• T08 CAST experimental: somente aprovado se a expressão gerar erro reproduzível no ambiente adotado.
+• T09 Notícia: oráculo verdadeiro/falso consistente.
+• T10 ChefLab: XSS armazenado reproduzível no vuln e neutralizado no safe.
+• T11 Perfil: XSS armazenado reproduzível no vuln e neutralizado no safe.
+• T12 Cookie: `lab_session` é acessível ao JavaScript somente no vuln e possui HttpOnly no safe.
+• T13 Keylogger didático: payload armazenado consegue observar eventos somente nos campos de laboratório e sem envio externo no
+vuln; não funciona no safe.
+• T14 Reset: /api/reset restaura somente o laboratório do aluno.
+• T15 Console: botão de modo seguro mostra as mitigações aplicadas.
+• T16 Console: botão de retorno abre a página exata associada ao tópico e ao aluno selecionado.
+• T17 Proxy/query string: parâmetros chegam sem alteração indevida.
+• T18 Security Group: nenhuma porta interna é acessível diretamente.
+• T19 Escala: executar o número planejado de stacks e verificar CPU, RAM, disco e estabilidade.
+
+20. Critérios de aceitação
+A arquitetura funciona em uma EC2 compatível com as quotas do ambiente AWS.
+Cada aluno possui aplicação, banco, rede e volume independentes.
+Somente o proxy possui portas públicas.
+Cada URL encaminha exclusivamente para a stack correspondente.
+O reset é isolado por aluno.
+O modo vuln/safe é isolado por laboratório.
+Os quatro cenários originais continuam reproduzíveis e os dois novos cenários de XSS são reproduzíveis.
+O cookie didático demonstra corretamente a diferença de HttpOnly.
+O cenário de keylogger utiliza exclusivamente campos sintéticos e não possui exfiltração externa.
+O console explica as mitigações e mantém a navegação contextual.
+O cenário de ExtractValue utiliza uma variante comprovadamente reproduzível.
+O dicionário do banco coincide com init.sql e repositories.
+O número máximo de alunos é definido por teste de capacidade.
+
+21. Feedbacks registrados da equipe
+ERICK — Implementar novos pontos de injeção de XSS armazenado: adicionar uma área vulnerável fora do ChefLab; simular roubo de
+cookies com cookie de sessão sem HttpOnly no modo vulnerável; demonstrar keylogger em campos de laboratório; no modo seguro,
+neutralizar o XSS e utilizar HttpOnly.
+STATUS: incorporado ao DAS. Foi escolhido `/banco/perfil` como novo ponto, com cookie `lab_session` sintético e campos de entrada
+explicitamente fictícios.
+DIOGO — Ao ativar o modo seguro, o console do instrutor deve explicar o que foi feito para proteger o sistema.
+STATUS: incorporado. O console passa a apresentar as mitigações relevantes ao selecionar o modo seguro.
+DIOGO — Alterar o extrato para permitir uma demonstração de SQLi baseada em erro usando CAST e/ou CONCAT/CAST.
+STATUS: incorporado com ressalva técnica. O documento prevê CAST como variante experimental, mas não o trata como garantido; a
+variante principal usa CONCAT com prefixo numérico e ExtractValue, que deve ser validada na imagem MySQL fixada.
+DIOGO — No console do instrutor, permitir voltar à página exata que estava sendo referenciada.
+STATUS: incorporado. O console passa a manter referência contextual de host, rota, query string e laboratório.
+DIOGO — No console do instrutor, trocar o uso de `0x7e` no cenário de extrato por um número inteiro para facilitar a apresentação.
+STATUS: incorporado. A variante recomendada passa a usar `CONCAT(1, ...)`, mantendo o payload com `0x7e` apenas como referência
+anterior/alternativa.
+
+22. Observações finais
+Esta v2.4 mantém a arquitetura multi-aluno da v2.3 — EC2 + Docker + proxy reverso — e amplia o laboratório sem transformar os novos
+cenários em mecanismos de exfiltração real.
+
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 5
+
+O novo XSS do FinBank é deliberadamente limitado ao domínio e aos dados sintéticos do laboratório. A demonstração de cookies e
+keylogging existe para explicar impacto e contexto de execução de JavaScript, não para coletar informações reais.
+A variante final de SQLi baseada em erro deve ser fixada somente depois de um teste de aceitação contra a versão exata do MySQL usada
+no Docker.
+Fim do Documento — DAS v2.4
+
+DAS v2.4 — Lab FinBank & ChefLab
+
+Página 6
+
+
