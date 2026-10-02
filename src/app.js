@@ -45,6 +45,7 @@ const PAGINAS = {
   '/finbank/extrato': 'finbank/extrato.html',
   '/finbank/comunicados': 'finbank/comunicados.html',
   '/finbank/noticia': 'finbank/noticia.html',
+  '/finbank/perfil': 'finbank/perfil.html',
 
   // ChefLab.
   '/cheflab': 'cheflab/index.html',

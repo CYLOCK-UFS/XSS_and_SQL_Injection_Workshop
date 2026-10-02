@@ -26,6 +26,7 @@
           <a href="/finbank/agencias">Agencias</a>
           <a href="/finbank/extrato" aria-current="page">Extrato</a>
           <a href="/finbank/comunicados">Comunicados</a>
+          <a href="/finbank/perfil">Perfil</a>
         </nav>
 
         <div class="fb-conta">
@@ -293,9 +294,24 @@
         );
       }
 
-      // A tela abre com uma conta valida: uma tabela vazia na entrada faz o
-      // aluno suspeitar do laboratorio antes de chegar no cenario.
-      await consultar('CLI001');
+/**
+       * Conta da tela, lida da query string.
+       *
+       * Sem isto, o botao de retorno do console do instrutor levaria de volta
+       * para uma pagina com `CLI001` na tela, enquanto a demonstracao era sobre
+       * `98765`: a navegacao contextual (DAS v2.4, secao 16.2) existe para
+       * reconstruir o estado, nao apenas a rota. O default continua sendo
+       * `CLI001` -- uma tabela vazia na entrada faria o aluno suspeitar do
+       * laboratorio antes de chegar no cenario.
+       *
+       * O valor vai para a URL como query string e nao para o innerHTML: e
+       * `textContent` no `#extrato-conta`, entao o proprio parametro da query
+       * string nao vira mais um ponto de XSS reflexivo.
+       */
+      const contaDaUrl =
+        new URLSearchParams(window.location.search).get('id_conta') || 'CLI001';
+
+      await consultar(contaDaUrl);
     </script>
   </body>
 </html>

@@ -29,6 +29,7 @@ const PAGINAS = [
   ['/finbank/extrato', 200],
   ['/finbank/comunicados', 200],
   ['/finbank/noticia', 200],
+  ['/finbank/perfil', 200],
   ['/cheflab', 200],
   ['/cheflab/receita', 200],
   ['/palco', 200],

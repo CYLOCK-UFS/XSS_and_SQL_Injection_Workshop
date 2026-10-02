@@ -1,7 +1,7 @@
 /**
  * Cabecalho compartilhado das paginas do FinBank (DAS v2.3, secao 4).
  *
- * A barra de navegacao e a conta logada aparecem nas cinco telas do autoatendimento
+ * A barra de navegacao e a conta logada aparecem nas seis telas do autoatendimento
  * e sao a mesma coisa em todas. O que muda entre as telas e o `aria-current` do
  * link ativo, e esse atributo fica no HTML de cada pagina: e uma propriedade do
  * documento, nao um estado que o script precise inferir do caminho.

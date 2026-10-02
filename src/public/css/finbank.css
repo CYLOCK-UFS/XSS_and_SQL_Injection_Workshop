@@ -827,3 +827,122 @@ textarea.fb-campo {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Perfil do cliente: cenario 5 (DAS v2.4, secao 8)                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Linha de acao do formulario: botao e o aviso que ele produz.
+ *
+ * `align-items: center` e o que segura o aviso na altura do botao em vez de
+ * encosta-lo na borda de cima do texto, e o `min-height` garante que o aviso
+ * aparecendo nao empurre o botao -- o layout nao pode saltar no clique que o
+ * aluno deu.
+ */
+.fb-acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  flex-wrap: wrap;
+  margin-top: var(--e-4);
+}
+
+/**
+ * Descricao gravada.
+ *
+ * O `white-space: pre-wrap` conta a historia do laboratorio: o texto vem de um
+ * `TEXT` e volta com as quebras de linha que o aluno digitou. Sem esta regra o
+ * navegador colapsa tudo em um paragrafo unico, e o texto exibido deixa de
+ * bater com o que foi digitado no formulario -- o aluno veria uma coisa e
+ * buscaria o payload em outra.
+ *
+ * Esta regra nao e parte da mitigacao e nao deve ser lida como uma: ela nao
+ * tem relacao com o XSS. A correcao esta em perfil.js, que usa `textContent`
+ * em vez de `innerHTML`.
+ */
+.fb-perfil__texto {
+  margin: 0;
+  color: var(--fb-texto);
+  font-size: var(--t-14);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dados de laboratorio: cenario 6 (DAS v2.4, secao 10)                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Os campos de leitura por payload ficam visualmente separados do formulario
+ * de perfil, e o motivo e o mesmo que no ChefLab: a demonstracao precisa ficar
+ * nitida. Se os dois estivessem no mesmo bloco, o aluno nao saberia dizer qual
+ * dos dois campos e o alvo do payload -- e no modo seguro a duvida seria a
+ * mesma, o que tiraria da comparacao justamente a leitura que ela existe para
+ * produzir.
+ *
+ * A borda tracejada e o unico elemento decorativo deste arquivo, e ela existe
+ * para marcar "isto aqui e o laboratorio, nao o produto".
+ */
+.fb-lab-bloco {
+  border-style: dashed;
+}
+
+/**
+ * Aviso de dados sinteticos.
+ *
+ * Nao e um alerta, e uma frase do produto: o painel tambem seria seguro mesmo
+ * com dados reais, porque a leitura acontece no navegador. O que muda com dado
+ * real e o prejuizo, nao o comportamento -- e o texto nao deve sugerir o
+ * contrario.
+ */
+.fb-lab-aviso {
+  margin: 0 0 var(--e-4);
+  color: var(--fb-texto-suave);
+  font-size: var(--t-13);
+  max-width: 68ch;
+}
+
+.fb-lab-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--e-3);
+  margin-bottom: var(--e-4);
+}
+
+/**
+ * Caixa onde o payload didatico escreve o que leu.
+ *
+ * `min-height` reserva o espaco com o painel vazio. Sem isso a caixa nasceria
+ * com zero altura no modo vulneravel e cresceria no primeiro evento: o conteudo
+ * que o aluno precisa ver piscaria na tela, e quem conduz a aula perderia a
+ * captura na primeira tecla. Com o espaco reservado, o texto simplesmente
+ * aparece.
+ */
+.fb-lab-saida {
+  border-top: 1px solid var(--fb-borda);
+  padding-top: var(--e-3);
+}
+
+.fb-lab-saida__rotulo {
+  display: block;
+  margin-bottom: var(--e-2);
+  font-size: var(--t-13);
+  font-weight: 600;
+  color: var(--fb-texto-suave);
+}
+
+.fb-lab-eventos {
+  margin: 0;
+  padding: var(--e-3);
+  min-height: 5.5rem;
+  background: var(--fb-fundo);
+  border: 1px solid var(--fb-borda);
+  border-radius: var(--raio-sm);
+  color: var(--fb-texto);
+  font-size: var(--t-13);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

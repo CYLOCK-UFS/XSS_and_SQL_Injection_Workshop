@@ -54,11 +54,35 @@
               <span class="pill" id="palco-saude">verificando banco...</span>
             </div>
 
+            <!-- DAS v2.4, secao 16.3. Fica no bloco de SESSAO e nao no
+                 cabecalho porque e a linha que precisa estar a vista no momento
+                 do reset: e o que impede de apagar o laboratorio da mesa
+                 errada. Em 13 bancadas, todas com a mesma URL de rota, o nome do
+                 aluno e a origem sao os unicos dados que distinguem uma da
+                 outra. -->
+            <p class="palco-contexto" id="palco-contexto">
+              identificando a bancada...
+            </p>
+
             <p>
               O modo vale para todas as paginas: o app nao muda de cor nem de
               conteudo ao trocar de modo. Quem conduz ve a cor na barra; o aluno
               nao tem esse sinal na tela em que esta trabalhando.
             </p>
+          </section>
+
+          <!-- DAS v2.4, secao 16.1 e teste T15. Nasce oculto e so aparece no
+               modo seguro: no vuln estas protecoes nao estao no codigo que
+               roda, e uma lista esmaecida ensinaria que elas existem desligadas.
+               Fica abaixo de SESSAO porque e a resposta direta ao botao de modo
+               seguro, e nao um passo do roteiro. -->
+          <section class="palco-painel oculto" id="painel-mitigacoes">
+            <h2>Mitigacoes aplicadas</h2>
+            <p>
+              O que mudou de verdade ao virar para o modo seguro. Cada item
+              aponta o arquivo onde a protecao vive.
+            </p>
+            <ul class="mitigacoes" id="lista-mitigacoes"></ul>
           </section>
 
           <section class="palco-painel">

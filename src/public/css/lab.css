@@ -499,6 +499,65 @@ body:not([data-app]) a:hover {
   margin-bottom: var(--e-3);
 }
 
+/* Contexto da bancada (DAS v2.4, secao 16.3). Em monoespacada e com borda a
+   esquerda porque e a linha que o instrutor precisa ler ANTES de clicar em
+   "Restaurar laboratorio": nas treze bancadas todas as rotas sao iguais, e o
+   par aluno + origem e o que distingue uma da outra. Fica abaixo do controle
+   de modo e acima do texto que explica o modo, para nao ser lido como parte
+   do bloco "modo vale para todas as paginas". */
+.palco-contexto {
+  font-family: var(--mono);
+  font-size: var(--t-13);
+  color: var(--lab-texto);
+  background: var(--lab-superficie-2);
+  border: 1px solid var(--lab-borda);
+  border-left: 3px solid var(--lab-acento);
+  border-radius: var(--raio-sm);
+  padding: var(--e-2) var(--e-3);
+  margin: var(--e-3) 0;
+  word-break: break-word;
+}
+
+/* Mitigacoes (DAS v2.4, secao 16.1). Sem marcador de lista: cada item e um
+   bloco com titulo, detalhe e caminho, e um marcador solto na frente de tres
+   linhas ficaria torto. */
+.mitigacoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--e-2);
+}
+
+.mitigacao {
+  display: grid;
+  gap: 2px;
+  padding: var(--e-3);
+  background: var(--lab-superficie-2);
+  border: 1px solid var(--lab-borda);
+  border-radius: var(--raio-sm);
+}
+
+.mitigacao__titulo {
+  font-size: var(--t-14);
+  color: var(--lab-texto);
+}
+
+.mitigacao__detalhe {
+  font-size: var(--t-13);
+  line-height: 1.5;
+  color: var(--lab-texto-suave);
+}
+
+/* O caminho do arquivo e o menor dos tres destaques: responde a "onde eu vejo
+   isso?", e nao e o assunto principal do item. */
+.mitigacao__onde {
+  font-family: var(--mono);
+  font-size: var(--t-12);
+  color: var(--lab-texto-suave);
+  word-break: break-all;
+}
+
 /* Passo do roteiro: numero grande + texto, para quem conduz ler de longe. */
 .passo {
   display: grid;

@@ -18,6 +18,7 @@ USE lab_palestra;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS perfis_clientes;
 DROP TABLE IF EXISTS comentarios_receita;
 DROP TABLE IF EXISTS extratos;
 DROP TABLE IF EXISTS noticias;
@@ -223,6 +224,47 @@ INSERT INTO comentarios_receita (nome_autor, texto_comentario, data_postagem) VA
    '2024-01-10 18:30:00'),
   ('Chef Bruno',  'Use a agua do cozimento para finalizar o risoto: ela concentra todo o sabor.',
    '2024-01-11 19:45:00');
+
+-- -----------------------------------------------------------------------------
+-- perfis_clientes: segundo ponto de XSS armazenado do laboratorio
+-- (DAS v2.4, secao 8 e secao 13).
+--
+-- Tabela PROPRIA, e nao uma coluna em `clientes`, por dois motivos que o DAS
+-- registra: `clientes` e o cadastro que aparece no cabecalho de todo o
+-- autoatendimento, e um XSS armadilhado ali apareceria em seis telas de uma
+-- vez -- o que mudaria a leitura da aula de "um ponto de injeção" para "a
+-- aplicacao inteira e vulneravel". Alem disso, a semantica de `clientes` (nome,
+-- cpf, telefone, saldo) nao tem espaco para um campo que o usuario escreve.
+-- O perfil e uma area do produto que o proprio cliente preenche.
+--
+-- Da mesma forma que em comentarios_receita, o INSERT e parametrizado nos dois
+-- modos e o risco esta na SAIDA (src/public/finbank/perfil.js). O `maxlength`
+-- do formulario espelha o limite do servidor, mas `maxlength` e validacao de
+-- cliente: quem chamar POST /banco/perfil com curl envia o que quiser.
+--
+-- `descricao_perfil` e TEXT, e nao VARCHAR: e o unico campo do laboratorio cujo
+-- conteudo e um paragrafo, e um payload de XSS que caiba num VARCHAR curto
+-- entraria truncado no meio da tag -- e tag truncada continua sendo HTML
+-- analisada, o que da a impressao enganosa de que o limite protege.
+--
+-- O indice em id_cliente nao e decorativo: e a coluna pela qual a pagina busca
+-- o perfil, e sem ele o MySQL faria varredura da tabela a cada GET. Mesmo
+-- criterio de `agencias` (cidade) e `extratos` (id_conta).
+--
+-- O registro abaixo e o estado inicial que POST /api/reset restaura. E texto
+-- CORRETO, sem marcacao: a pagina abre como uma area de perfil de verdade, e o
+-- payload entra durante a demonstracao, colado pelo aluno no formulario.
+-- -----------------------------------------------------------------------------
+CREATE TABLE perfis_clientes (
+  id_perfil      INT AUTO_INCREMENT NOT NULL,
+  id_cliente     VARCHAR(20)  NOT NULL,
+  descricao_perfil TEXT       NOT NULL,
+  PRIMARY KEY (id_perfil),
+  KEY idx_perfis_cliente (id_cliente)
+) ENGINE=InnoDB;
+
+INSERT INTO perfis_clientes (id_cliente, descricao_perfil) VALUES
+  ('CLI001', 'Cliente FinBank desde 2019. Prefere atendimento na agencia e nao usa servicos de terceiros.');
 
 -- =============================================================================
 -- Fim da carga inicial. Nenhum registro real de cliente e utilizada aqui.

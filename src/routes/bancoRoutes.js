@@ -7,6 +7,12 @@ import {
   listarCidades,
   listarComunicados,
 } from '../repositories/bancoRepository.js';
+import {
+  LIMITE_CLIENTE,
+  LIMITE_DESCRICAO,
+  buscarPerfil,
+  salvarPerfil,
+} from '../repositories/perfilRepository.js';
 import { LAB_MODE_VULN } from '../middleware/mode.js';
 
 const router = Router();
@@ -164,6 +170,95 @@ router.get('/comunicados', async (req, res) => {
     total: comunicados.length,
     comunicados,
   });
+});
+
+/**
+ * Cenario 5 - XSS armazenado no FinBank (DAS v2.4, secao 8).
+ * GET /banco/perfil?id_cliente=<id_cliente>
+ *
+ * O segundo armazenamento de XSS do laboratorio, e o primeiro que NAO esta no
+ * ChefLab. A razao de o DAS escolher uma "area de perfil do cliente" e uma
+ * razao didatica, e nao de produto: o mesmo comportamento, o mesmo banco e a
+ * mesma aplicacao, em um produto diferente. Quem terminasse o roteiro sabendo
+ * apenas que "portal de comentarios tem XSS" levaria essa conclusao para casa;
+ * quem viu o mesmo sink em duas telas do mesmo sistema leva a do contexto de
+ * renderizacao.
+ *
+ * `id_cliente` vai como placeholder nos DOIS modos -- nao existe cenario de
+ * injecao de SQL nesta rota, e a funcao do repository nao recebe `labMode`.
+ * O bloco T12 da suite de aceite existe para travar esse fato: um dia em que
+ * `id_cliente` passasse a ser concatenado seria um quinto cenario aparecendo
+ * sem ninguem ter pedido, e a pagina nao teria nenhum payload para o exercitar.
+ */
+router.get('/perfil', async (req, res) => {
+  const idCliente = textoUnico(req.query.id_cliente);
+
+  if (idCliente === '') {
+    res.status(400).json({
+      erro: 'Informe id_cliente.',
+    });
+    return;
+  }
+
+  const perfil = await buscarPerfil(idCliente);
+
+  if (!perfil) {
+    res.status(404).json({
+      erro: 'Perfil nao encontrado.',
+    });
+    return;
+  }
+
+  res.json({
+    modo: req.labMode,
+    perfil,
+  });
+});
+
+/**
+ * Cenario 5 - XSS armazenado no FinBank (DAS v2.4, secao 8).
+ * POST /banco/perfil  { id_cliente, descricao_perfil }
+ *
+ * O INSERT e PARAMETRIZADO nos dois modos: e o mesmo desenho de
+ * POST /receitas, e pelo mesmo motivo. A marcacao do payload e gravada
+ * exatamente como digitada e volta intacta da API -- o que o E2E le, e o que
+ * torna a distincao entre "o banco aceitou o payload" e "o navegador executou
+ * o payload" observavel na apresentacao.
+ *
+ * A diferenca entre vuln e safe esta inteira na renderizacao da resposta, em
+ * src/public/finbank/perfil.js.
+ */
+router.post('/perfil', async (req, res) => {
+  const idCliente = String(req.body?.id_cliente ?? '').trim();
+  const descricao = String(req.body?.descricao_perfil ?? '').trim();
+
+  if (idCliente === '' || descricao === '') {
+    res.status(400).json({
+      erro: 'Informe id_cliente e descricao_perfil.',
+    });
+    return;
+  }
+
+  // `maxlength` do formulario espelha estes limites, e nao os substitui: quem
+  // chamar esta rota com curl envia o que quiser, e um id de megabytes viraria
+  // parametro de consulta. Ver os limites em src/repositories/perfilRepository.js.
+  if (idCliente.length > LIMITE_CLIENTE) {
+    res.status(400).json({
+      erro: `id_cliente deve ter no maximo ${LIMITE_CLIENTE} caracteres.`,
+    });
+    return;
+  }
+
+  if (descricao.length > LIMITE_DESCRICAO) {
+    res.status(400).json({
+      erro: `descricao_perfil deve ter no maximo ${LIMITE_DESCRICAO} caracteres.`,
+    });
+    return;
+  }
+
+  const perfil = await salvarPerfil({ idCliente, descricao });
+
+  res.status(201).json({ modo: req.labMode, perfil });
 });
 
 

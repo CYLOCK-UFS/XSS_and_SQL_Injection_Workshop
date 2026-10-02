@@ -21,7 +21,7 @@ e um **seguro**.
 - [As telas](#as-telas)
 - [Ficha técnica](#ficha-técnica)
 - [Modo vulnerável e modo seguro](#modo-vulnerável-e-modo-seguro)
-- [Os quatro cenários](#os-quatro-cenários)
+- [Os sete cenários](#os-sete-cenários)
 - [Console do instrutor](#console-do-instrutor)
 - [Notas de implementação](#notas-de-implementação)
 - [Roteiro de apresentação](#roteiro-de-apresentação)
@@ -61,7 +61,8 @@ tela de aluno carrega explicação didática — quem ensina usa o console.
 | `/finbank/noticia` | consulta por número — **cenário 3** | aluno |
 | `/cheflab` | portal de receitas | aluno |
 | `/cheflab/receita` | receita com comentários — **cenário 4** | aluno |
-| `/palco` | **console do instrutor**: roteiro, payloads, inspetor | instrutor |
+| `/finbank/perfil` | perfil do cliente — **cenários 5 a 7** | aluno |
+| `/palco` | **console do instrutor**: roteiro, payloads, inspetor, mitigações | instrutor |
 
 Os caminhos antigos (`/banco/agencias.html`, `/banco/extrato.html`,
 `/banco/noticia.html`, `/receitas/receitas.html`) continuam funcionando como

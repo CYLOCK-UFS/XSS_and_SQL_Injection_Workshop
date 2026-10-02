@@ -32,6 +32,7 @@ test.describe('estrutura do laboratorio', () => {
     ['/finbank/extrato', 'FinBank'],
     ['/finbank/comunicados', 'FinBank'],
     ['/finbank/noticia', 'FinBank'],
+    ['/finbank/perfil', 'FinBank'],
     ['/cheflab', 'ChefLab'],
     ['/cheflab/receita', 'ChefLab'],
   ];
@@ -166,6 +167,20 @@ test.describe('FinBank: as telas do autoatendimento', () => {
   });
 
   /**
+   * O payload do roteiro do DAS v2.4: `CONCAT(1, ...)`.
+   *
+   * O prefixo inteiro faz a mensagem do MySQL comecar com o caractere que o
+   * proprio CONCAT acrescentou, e a mensagem aparece inteira na tela. E a
+   * variante usada na apresentacao; a classica com `0x7e` tem teste proprio
+   * abaixo, porque material de aula antigo ainda a usa.
+   */
+  const EXTRACTEVALUE =
+    "98765' AND EXTRACTVALUE(1, CONCAT(1, (SELECT senha FROM administradores WHERE id_admin='1'))) -- ";
+
+  const EXTRACTEVALUE_CLASSICO =
+    "98765' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT senha FROM administradores WHERE id_admin='1'))) -- ";
+
+  /**
    * O vazamento do cenario 2 tem de aparecer na tela, e nao em um console: o
    * aluno precisa VER o detalhe do MySQL para acreditar nele.
    */
@@ -173,19 +188,30 @@ test.describe('FinBank: as telas do autoatendimento', () => {
     await page.request.post('/api/mode', { data: { mode: 'vuln' } });
     await page.goto('/finbank/extrato');
 
-    await page.fill(
-      '#campo-conta',
-      "98765' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT senha FROM administradores WHERE id_admin='1'))) -- ",
-    );
+    await page.fill('#campo-conta', EXTRACTEVALUE);
     await page.click('#formulario button[type="submit"]');
 
     await expect(page.locator('#painel-erro')).toBeVisible();
     await expect(page.locator('#erro-sql')).toContainText('XPATH syntax error');
     await expect(page.locator('#erro-sql')).toContainText('abcde');
 
+    // O `1` na frente da senha prova que o prefixo veio do CONCAT e nao da
+    // tabela: e o caractere que torna a origem da mensagem obvia na tela.
+    await expect(page.locator('#erro-sql')).toContainText("'1abcde'");
+
     // O bloco existe e esta fechado: e o que se ve num produto com um
     // diagnostico escondido, e nao um alerta vermelho gritando na tela.
     await expect(page.locator('#detalhe-tecnico')).not.toHaveAttribute('open', '');
+  });
+
+  test('extrato: a variante classica com 0x7e produz o mesmo vazamento', async ({ page }) => {
+    await page.request.post('/api/mode', { data: { mode: 'vuln' } });
+    await page.goto('/finbank/extrato');
+
+    await page.fill('#campo-conta', EXTRACTEVALUE_CLASSICO);
+    await page.click('#formulario button[type="submit"]');
+
+    await expect(page.locator('#erro-sql')).toContainText("'~abcde'");
   });
 
   /**
@@ -198,10 +224,7 @@ test.describe('FinBank: as telas do autoatendimento', () => {
     await page.request.post('/api/mode', { data: { mode: 'safe' } });
     await page.goto('/finbank/extrato');
 
-    await page.fill(
-      '#campo-conta',
-      "98765' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT senha FROM administradores WHERE id_admin='1'))) -- ",
-    );
+    await page.fill('#campo-conta', EXTRACTEVALUE);
     await page.click('#formulario button[type="submit"]');
 
     await expect(page.locator('#painel-tabela')).toBeVisible();
@@ -306,12 +329,25 @@ test.describe('console do instrutor', () => {
     await request.post('/api/mode', { data: { mode: 'vuln' } });
   });
 
-  test('o console traz os quatro cenarios com roteiro e payloads', async ({ page }) => {
+  test('o console traz os sete cenarios com roteiro e payloads', async ({ page }) => {
     await page.goto('/palco');
 
-    await expect(page.locator('#seletor-cenario option')).toHaveCount(4);
+    // Os quatro primeiros sao os cenarios originais do DAS v2.2; os tres
+    //Ultimos sao o perfil, o cookie e o keylogger, do DAS v2.4. A ordem e a
+    // ordem da apresentacao, e por isso que a contagem e verificada: um
+    // cenario acrescentado no fim sem passar pelo roteiro some da lista sem
+    // quebrar teste nenhum.
+    await expect(page.locator('#seletor-cenario option')).toHaveCount(7);
     await expect(page.locator('#lista-passos .passo')).toHaveCount(5);
     await expect(page.locator('#lista-payloads .payload-linha')).toHaveCount(3);
+
+    // A ordem e a ordem da apresentacao. Verificar so a contagem deixaria
+    // passar um cenario novo inserido no fim da lista, fora do roteiro.
+    const ids = await page
+      .locator('#seletor-cenario option')
+      .evaluateAll((opcoes) => opcoes.map((o) => o.value));
+
+    expect(ids).toEqual(['uniao', 'erro', 'oraculo', 'xss', 'perfil', 'cookie', 'leitura']);
   });
 
   test('trocar de cenario troca roteiro, payloads e rota do inspetor', async ({ page }) => {
@@ -369,5 +405,82 @@ test.describe('console do instrutor', () => {
     await page.fill('#campo-valor', "' OR 1=1 -- ");
     await page.click('#botao-sondar');
     await expect(page.locator('#sonda-status')).toContainText('HTTP 200');
+  });
+
+  /**
+   * T15 do DAS v2.4: clicar em "modo seguro" no console mostra o que mudou.
+   *
+   * O painel e visibilidade pura, e o teste cobre os dois lados: escondido no
+   * vuln e aparecendo no safe. Um painel que aparecesse no vuln ensinaria que
+   * as protecoes existem desligadas, o que e falso.
+   */
+  test('o painel de mitigacoes so aparece no modo seguro', async ({ page }) => {
+    await page.goto('/palco');
+
+    await expect(page.locator('#painel-mitigacoes')).toBeHidden();
+
+    await page.locator('#palco-modo-controle .modo-opcao[data-modo="safe"]').click();
+    await expect(page.locator('#painel-mitigacoes')).toBeVisible();
+
+    // Os quatro correlatos do DAS: prepared statement, erro generico, saida de
+    // texto e HttpOnly. Cada um precisa apontar um arquivo do repositorio --
+    // a promessa de mitigacao so vale se o codigo que a implementa existe.
+    await expect(page.locator('#lista-mitigacoes .mitigacao')).toHaveCount(4);
+    await expect(page.locator('#lista-mitigacoes')).toContainText('Prepared statement');
+    await expect(page.locator('#lista-mitigacoes')).toContainText('Erro generico');
+    await expect(page.locator('#lista-mitigacoes')).toContainText('innerHTML');
+    await expect(page.locator('#lista-mitigacoes')).toContainText('HttpOnly');
+    await expect(page.locator('#lista-mitigacoes')).toContainText('src/middleware/mode.js');
+
+    await page.locator('#palco-modo-controle .modo-opcao[data-modo="vuln"]').click();
+    await expect(page.locator('#painel-mitigacoes')).toBeHidden();
+  });
+
+  /**
+   * T16 do DAS v2.4: o botao de retorno leva a pagina exata do topico.
+   *
+   * E a URL ABSOLUTA que o teste verifica. Na implantacao por portas, a mesma
+   * rota corresponde a uma bancada diferente em cada porta, e a URL absoluta e
+   * o que torna o erro de mesa visivel antes do clique.
+   */
+  test('o botao de retorno aponta para a pagina exata de cada cenario', async ({ page }) => {
+    await page.goto('/palco');
+    const origem = new URL(page.url()).origin;
+
+    const esperado = {
+      uniao: '/finbank/agencias',
+      erro: '/finbank/extrato?id_conta=98765',
+      oraculo: '/finbank/noticia?id=5',
+      xss: '/cheflab/receita',
+      perfil: '/finbank/perfil?id_cliente=CLI001',
+    };
+
+    for (const [id, caminho] of Object.entries(esperado)) {
+      await page.selectOption('#seletor-cenario', id);
+      await expect(page.locator('#alvo-ativo')).toHaveAttribute('href', `${origem}${caminho}`);
+    }
+  });
+
+  test('o botao de retorno leva a uma pagina que abre com o estado esperado', async ({ page }) => {
+    await page.goto('/palco');
+    await page.selectOption('#seletor-cenario', 'erro');
+
+    // Nao basta a URL estar certa: ela precisa abrir a tela que o roteiro
+    // promete. Aqui o `id_conta` da URL e lido pela pagina, e e por isso que
+    // extrato.html o consulta.
+    await page.locator('#alvo-ativo').click();
+
+    await expect(page).toHaveURL(`${new URL(page.url()).origin}/finbank/extrato?id_conta=98765`);
+    await expect(page.locator('#extrato-conta')).toHaveText('98765');
+    await expect(page.locator('#resumo')).toContainText('98765');
+  });
+
+  test('o console mostra qual bancada esta em controle', async ({ page }) => {
+    await page.goto('/palco');
+
+    // O par aluno + origem e o que impede um reset na mesa errada: as treze
+    // bancadas respondem nas mesmas rotas.
+    await expect(page.locator('#palco-contexto')).toContainText('aluno');
+    await expect(page.locator('#palco-contexto')).toContainText(new URL(page.url()).origin);
   });
 });

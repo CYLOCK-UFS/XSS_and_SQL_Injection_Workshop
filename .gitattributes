@@ -1,0 +1,27 @@
+# Um repositorio que roda em Windows, no container e na EC2 precisa que o fim de
+# linha seja escolhido por arquivo, e nao pelo `core.autocrlf` de cada maquina.
+
+# Os scripts de shell rodam em Linux (Dockerfile e a EC2). Um CRLF aqui vira
+# `bad interpreter: /usr/bin/env bash^M` na hora de executar, e o erro aponta
+# para o shebang em vez de apontar para o arquivo certo.
+*.sh text eol=lf
+
+# Mesma razao para os arquivos que o container consome: um SQL com CRLF no
+# init.sql nao quebra o MySQL, mas um .yml ou .json com CRLF ja atrapalha
+# ferramenta de lint e diff.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sql text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# Documentacao e o conteudo dos DAS: CRLF nao atrapalha, e normalizar torna o
+# diff legivel.
+*.md text eol=lf
+*.txt text eol=lf
+
+# Imagens: Git nao deve tentar normalizar linha nenhuma.
+*.png binary
