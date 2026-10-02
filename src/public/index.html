@@ -3,124 +3,98 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FinBank & ChefLab - laboratorio de seguranca</title>
+    <title>Oficina SQLi e XSS — FinBank &amp; ChefLab</title>
+    <link rel="stylesheet" href="/css/base.css" />
     <link rel="stylesheet" href="/css/lab.css" />
     <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
     <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
   </head>
-  <body>
-    <header class="topo">
-      <div class="topo__interno">
-        <a class="topo__marca" href="/">
-          <img class="topo__escudo" src="/img/escudo-liga.png" alt="" />
-          <strong>FinBank & ChefLab</strong>
-          <span>SQL Injection e XSS</span>
-        </a>
-        <div class="topo__acoes">
-          <div data-lab-modo></div>
-          <button type="button" class="botao botao--perigo" data-lab-reset>
-            Restaurar laboratorio
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <main class="container">
-      <h1 class="titulo-secao">Laboratorio de demonstracao</h1>
-      <p class="subtitulo-secao">
-        Quatro cenarios de ataque web sobre dados sinteticos. O modo
-        <strong>vulneravel</strong> expoe a falha; o modo <strong>seguro</strong>
-        aplica a mitigacao correspondente. Alterne o modo na barra acima e
-        repita o mesmo passo para ver a diferenca.
-      </p>
-
-      <div class="aviso">
-        <span aria-hidden="true">&#9888;</span>
+  <!-- Pagina de ferramenta: a barra fina nao entra, porque aqui quem esta olhando
+       a tela e quem vai comecar a oficina, e nao a plateia. -->
+  <body data-lab-chrome="ausente">
+    <div class="largura-max">
+      <header class="oficina-cabecalho">
+        <img class="oficina-cabecalho__escudo" src="/img/escudo-liga.png" alt="" />
         <div>
-          <strong>Ambiente academico isolado</strong>
-          Todos os dados sao ficticios. Nao ha cartao, CPF, telefone ou credencial
-          real neste laboratorio. Nao publique este servico fora da rede de
-          treinamento.
+          <h1>Oficina de SQL Injection e XSS</h1>
+          <p>Escolha o aplicativo alvo. As instruções de condução ficam no console.</p>
+        </div>
+      </header>
+
+      <div class="oficina-aviso">
+        <div>
+          <strong>Ambiente acadêmico isolado</strong>
+          Todos os dados são sintéticos — não há cartão, CPF, telefone ou
+          credencial real. Não publique este serviço fora da rede de treinamento.
         </div>
       </div>
 
-      <div class="grade">
-        <section class="cartao">
-          <h3>FinBank</h3>
-          <p>
-            Tres cenarios de SQL Injection contra o backend MySQL, com a versao
-            mitigada por prepared statement.
-          </p>
-          <ul class="lista-cenarios">
-            <li><code>UNION</code> com quatro colunas</li>
-            <li>SQLi baseada em erro com <code>EXTRACTVALUE</code></li>
-            <li>SQLi inferencial (cega) por oracao booleana</li>
-          </ul>
-          <div class="cartao__rodape">
-            <a class="botao botao--primario botao--bloco" href="/banco/agencias.html">
-              Cenario 1 - Agencias
-            </a>
+      <main class="oficina-grade">
+        <a class="oficina-cartao" href="/finbank">
+          <h2>FinBank</h2>
+          <p>Autoatendimento de banco: agências, extrato de conta e comunicados.</p>
+          <div class="oficina-cartao__rodape">
+            <span class="pill">3 cenários</span>
           </div>
-        </section>
+        </a>
 
-        <section class="cartao">
-          <h3>ChefLab</h3>
-          <p>
-            Comentarios de receitas gravados no banco e renderizados no
-            navegador. O INSERT e parametrizado nos dois modos: a falha esta na
-            saida, nao na entrada.
-          </p>
-          <ul class="lista-cenarios">
-            <li><code>innerHTML</code> executa a marcacao do comentario</li>
-            <li><code>textContent</code> exibe o mesmo texto como texto</li>
-          </ul>
-          <div class="cartao__rodape">
-            <a class="botao botao--primario botao--bloco" href="/receitas/receitas.html">
-              Cenario 4 - Comentarios
-            </a>
+        <a class="oficina-cartao" href="/cheflab">
+          <h2>ChefLab</h2>
+          <p>Portal de receitas com página de receita e área de comentários.</p>
+          <div class="oficina-cartao__rodape">
+            <span class="pill">1 cenário</span>
           </div>
-        </section>
-      </div>
+        </a>
+      </main>
 
-      <div class="painel" style="margin-top: 22px">
-        <div class="painel__titulo">Roteiro sugerido</div>
-        <ol class="lista-cenarios">
-          <li>Confirme que o modo esta em <strong>Vulneravel</strong> (acento vermelho).</li>
-          <li>No cenario 1, use o payload UNION e leia a tabela de resultado.</li>
-          <li>No cenario 2, use o payload de erro e veja a senha na mensagem.</li>
-          <li>No cenario 3, compare a noticia com a resposta 404.</li>
-          <li>No cenario 4, grave um comentario com HTML e recarregue a pagina.</li>
-          <li>Alterne para <strong>Seguro</strong> e repita os quatro passos.</li>
-          <li>Restaure o laboratorio para o estado inicial antes da proxima turma.</li>
-        </ol>
-      </div>
+      <section class="oficina-secao">
+        <h2>Sessão</h2>
+        <div class="oficina-linha">
+          <div data-lab-modo></div>
+          <span class="modo-selo" id="selo-modo">Vulnerável</span>
+          <button type="button" class="botao" data-lab-reset>Restaurar</button>
+          <a class="botao" href="/palco">Console do instrutor</a>
+          <span class="pill" id="status-banco">verificando banco...</span>
+        </div>
+      </section>
 
-      <footer class="rodape">
-        <span class="pill">MySQL 8.0</span>
-        <span class="pill">Node.js + Express + mysql2</span>
-        <span class="pill" id="status-banco">verificando banco...</span>
-        <p>
-          Reset oficial do laboratorio: <code>POST /api/reset</code>. Estado do
-          modo: <code>POST /api/mode</code> com <code>lab_mode=vuln|safe</code>.
-        </p>
+      <footer class="oficina-aviso">
+        <div>
+          <strong>Antes de começar</strong>
+          <span class="pill">docker compose up -d db</span> o MySQL precisa estar de
+          pé para os quatro cenários responderem.
+        </div>
       </footer>
-    </main>
+    </div>
 
     <script type="module">
-      import { iniciarLaboratorio } from '/js/lab.js';
+      import { iniciarChrome } from '/js/chrome.js';
 
-      await iniciarLaboratorio();
+      const modo = await iniciarChrome();
+
+      // O selo ao lado do controle repete o modo em texto: na projecao a cor da
+      // barra se le de longe, mas o texto nao depende de distincao de tom.
+      document.querySelector('#selo-modo').textContent =
+        modo === 'safe' ? 'Seguro' : 'Vulnerável';
+
+      document
+        .querySelector('[data-lab-reset]')
+        .addEventListener('click', async (evento) => {
+          const { reiniciarLab } = await import('/js/lab.js');
+          reiniciarLab(evento);
+        });
 
       try {
         const resposta = await fetch('/api/health', {
           headers: { Accept: 'application/json' },
         });
         const dados = await resposta.json();
-        document.querySelector('#status-banco').textContent =
-          `banco ${dados.banco} - ${dados.tabelas} tabelas`;
+        document.querySelector('#status-banco').textContent = resposta.ok
+          ? `banco ${dados.banco} — ${dados.tabelas} tabelas`
+          : 'banco indisponível';
       } catch {
         document.querySelector('#status-banco').textContent =
-          'banco indisponivel';
+          'banco indisponível';
       }
     </script>
   </body>

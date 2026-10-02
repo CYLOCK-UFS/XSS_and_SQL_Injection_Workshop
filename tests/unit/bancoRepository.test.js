@@ -2,9 +2,11 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buscarCliente,
   buscarExtrato,
   buscarNoticia,
   listarAgencias,
+  listarComunicados,
 } from '../../src/repositories/bancoRepository.js';
 import { LAB_MODE_SAFE, LAB_MODE_VULN } from '../../src/middleware/mode.js';
 
@@ -213,5 +215,59 @@ describe('consulta sem filtro: ignora o parametro de qualquer modo', () => {
       assert.equal(chamada.metodo, 'execute');
       assert.equal(chamada.sql.includes('WHERE'), false);
     }
+  });
+});
+
+describe('leituras de apoio do autoatendimento: so existe caminho seguro', () => {
+  /**
+   * As duas leituras novas nao recebem `labMode`, e nao por esquecimento: nao ha
+   * cenario de injecao em nenhuma das duas. A prova e o executor falso -- se
+   * alguem reintroduzisse uma interpolacao, ela apareceria em `query()` ou em
+   * uma string SQL com o valor colado dentro.
+   */
+  it('buscarCliente envia o id como parametro, nunca no texto', async () => {
+    const executor = executorFalso([{ id_cliente: 'CLI001' }]);
+
+    await buscarCliente("CLI001' OR '1'='1", { executor });
+
+    assert.equal(executor.chamadas.length, 1);
+    const [chamada] = executor.chamadas;
+    assert.equal(chamada.metodo, 'execute');
+    assert.deepEqual(chamada.params, ["CLI001' OR '1'='1"]);
+    assert.equal(chamada.sql.includes('CLI001'), false);
+  });
+
+  it('buscarCliente devolve a primeira linha, ou null', async () => {
+    const comCliente = executorFalso([{ id_cliente: 'CLI001' }]);
+    assert.equal((await buscarCliente('CLI001', { executor: comCliente })).id_cliente, 'CLI001');
+
+    const semCliente = executorFalso([]);
+    assert.equal(await buscarCliente('CLI999', { executor: semCliente }), null);
+  });
+
+  it('listarComunicados consulta sem filtro e sem parametro', async () => {
+    const executor = executorFalso([{ id: '8', titulo: 'X' }]);
+
+    await listarComunicados({ executor });
+
+    const [chamada] = executor.chamadas;
+    assert.equal(chamada.metodo, 'execute');
+    assert.equal(chamada.sql.includes('WHERE'), false);
+    assert.equal(chamada.params, undefined);
+  });
+
+  /**
+   * O mural nao pode devolver `conteudo`. Nao e_fifo de estilo: o cenario 3 usa
+   * a rota /banco/noticia para comparar o corpo, e um mural com o texto inteiro
+   * daria o mesmo dado por um caminho que nao esta no roteiro.
+   */
+  it('listarComunicados pede so id, titulo e data', async () => {
+    const executor = executorFalso([]);
+
+    await listarComunicados({ executor });
+
+    const { sql } = executor.chamadas[0];
+    assert.match(sql, /SELECT id, titulo, data_publicacao FROM noticias/);
+    assert.equal(sql.includes('conteudo'), false);
   });
 });

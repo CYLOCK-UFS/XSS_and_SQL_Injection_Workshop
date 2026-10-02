@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Molho branco de alho — ChefLab</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/cheflab.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--cheflab" data-app="cheflab">
+    <header class="cl-topo">
+      <div class="cl-topo__interno">
+        <a class="cl-marca" href="/cheflab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M7 3.5v7.2a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V3.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M7 5.5H4.5V9a3 3 0 0 0 3 3M17 5.5h2.5V9a3 3 0 0 1-3 3" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M12 12.7v3.6M9 20.3h6M9.8 17.9h4.4l.8 2.4H9z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="cl-marca__nome">ChefLab</span>
+        </a>
+
+        <nav class="cl-nav" aria-label="Navegacao principal">
+          <a href="/cheflab">Receitas</a>
+          <a href="/cheflab/receita" aria-current="page">Molho branco de alho</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="cl-conteudo">
+      <div class="cl-heroi">
+        <div>
+          <span class="cl-heroi__selo">Italiana</span>
+          <h1 class="cl-titulo">Molho branco de alho com massa fresca</h1>
+          <p class="cl-legenda">
+            Um molho de emulsao leve, feito sem flour de trigo, que acompanha
+            qualquer massa fresca. Rende duas porcoes e leva meia hora.
+          </p>
+          <p class="cl-heroi__autor">
+            por <b>Chef Ana Ribeiro</b> — atualizado em 10/01/2024
+          </p>
+        </div>
+
+        <div class="cl-metricas">
+          <div>
+            <span class="cl-metrica__rotulo">Tempo</span>
+            <strong class="cl-metrica__valor">30 min</strong>
+          </div>
+          <div>
+            <span class="cl-metrica__rotulo">Dificuldade</span>
+            <strong class="cl-metrica__valor">Facil</strong>
+          </div>
+          <div>
+            <span class="cl-metrica__rotulo">Porcoes</span>
+            <strong class="cl-metrica__valor">2</strong>
+          </div>
+          <div>
+            <span class="cl-metrica__rotulo">Avaliacao</span>
+            <strong class="cl-metrica__valor">
+              <span class="cl-estrelas" aria-label="4 de 5 estrelas">★★★★☆</span>
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="cl-corpo">
+        <section>
+          <h2 class="cl-secao-titulo">Ingredientes</h2>
+          <ul class="cl-ingredientes">
+            <li><b>4</b> dentes de alho laminados</li>
+            <li><b>300 ml</b> de leite</li>
+            <li><b>150 ml</b> de creme de leite fresco</li>
+            <li><b>1</b> ovo inteiro</li>
+            <li><b>40 g</b> de manteiga gelada</li>
+            <li><b>500 g</b> de massa fresca</li>
+            <li><b>1/2</b> mao de noz</li>
+          </ul>
+
+          <div class="cl-destaque">
+            <b>Sem gluten.</b> A emulsao leva leite e ovo, sem qualquer
+            espessante — quem usa a agua do cozimento da massa aproveita o
+            amido que ela deixa.
+          </div>
+        </section>
+
+        <section>
+          <h2 class="cl-secao-titulo">Modo de preparo</h2>
+          <ol class="cl-passos">
+            <li>
+              Leve o leite e o creme ao fogo baixo com o alho laminado. Deixe
+              esquentar sem ferver: a ideia e extrair aroma, nao cozinhar o
+              alho.
+            </li>
+            <li>
+              Desligue e bata o ovo com a mao de=noz. A temperatura do liquido
+              tem que estar em torno de 70 °C: mais quente cozinha o ovo e o
+              molho vira curdio.
+            </li>
+            <li>
+              Volte a panela em fogo baixo e incorpore a manteiga gelada em
+              tres parcelas, batendo entre uma e outra para emulsionar.
+            </li>
+            <li>
+              Cozinhe a massa em agua bem salgada. Reserve uma caneca do agua
+              do cozimento antes de escorrer.
+            </li>
+            <li>
+              Finalize a massa no molho, junto com duas conchas da agua do
+              cozimento. Mexa em fogo desligado ate o creme abra.
+            </li>
+          </ol>
+        </section>
+      </div>
+
+      <section class="cl-bloco">
+        <div class="cl-comentarios-cabecalho">
+          <h2 class="cl-secao-titulo" id="resumo">Comentarios</h2>
+          <span class="cl-aviso-envio" id="aviso-envio" role="status"></span>
+        </div>
+
+        <form class="cl-formulario" id="formulario">
+          <div class="cl-formulario__linha">
+            <div style="flex: 1; min-width: 200px">
+              <label class="cl-rotulo" for="campo-autor">Seu nome</label>
+              <input
+                class="cl-campo"
+                id="campo-autor"
+                name="nome_autor"
+                maxlength="80"
+                autocomplete="name"
+                placeholder="Como devemos te chamar"
+              />
+            </div>
+            <button type="submit" class="cl-botao">Publicar comentario</button>
+          </div>
+
+          <div>
+            <label class="cl-rotulo" for="campo-texto">Comentario</label>
+            <textarea
+              class="cl-campo"
+              id="campo-texto"
+              name="texto_comentario"
+              maxlength="2000"
+              placeholder="O que voce achou da receita?"
+            ></textarea>
+          </div>
+        </form>
+
+        <ul class="cl-lista" id="lista-comentarios"></ul>
+
+        <p class="cl-vazio oculto" id="lista-vazia">
+          Nenhum comentario ainda. Seja o primeiro a dizer o que achou.
+        </p>
+      </section>
+
+      <details class="motivo">
+        <summary>Resposta da API</summary>
+        <pre id="json-resposta"></pre>
+      </details>
+    </main>
+
+    <footer class="cl-rodape">
+      ChefLab — receitas de comunidade · Conteudo e comentarios publicados por
+      usuarios e revisados pela comunidade.
+    </footer>
+
+    <script type="module" src="/cheflab/receita.js"></script>
+  </body>
+</html>

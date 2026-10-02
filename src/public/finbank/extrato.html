@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Extrato — FinBank</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/finbank.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--finbank" data-app="finbank">
+    <header class="fb-topo">
+      <div class="fb-topo__interno">
+        <a class="fb-marca" href="/finbank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 9.5 12 4l9 5.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 10v7M9.7 10v7M14.3 10v7M19 10v7M3.5 20h17" stroke-linecap="round" />
+          </svg>
+          <span class="fb-marca__nome">FinBank</span>
+        </a>
+
+        <nav class="fb-nav" aria-label="Navegacao principal">
+          <a href="/finbank">Inicio</a>
+          <a href="/finbank/agencias">Agencias</a>
+          <a href="/finbank/extrato" aria-current="page">Extrato</a>
+          <a href="/finbank/comunicados">Comunicados</a>
+          <a href="/finbank/perfil">Perfil</a>
+        </nav>
+
+        <div class="fb-conta">
+          <div class="fb-conta__texto">
+            <span class="fb-conta__nome" id="conta-nome">--</span>
+            <span class="fb-conta__id" id="conta-id">--</span>
+          </div>
+          <span class="fb-conta__avatar" id="conta-avatar">--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="fb-conteudo">
+      <nav class="fb-migalha" aria-label="Trilha de navegacao">
+        <a href="/finbank">Inicio</a>
+        <span aria-hidden="true">/</span>
+        <span>Extrato</span>
+      </nav>
+
+      <h1 class="fb-titulo fb-titulo--pagina">Extrato da conta</h1>
+
+      <section class="fb-conta-cartao">
+        <div>
+          <span class="fb-conta-cartao__rotulo">Conta corrente</span>
+          <strong class="fb-conta-cartao__valor dinheiro" id="extrato-conta">--</strong>
+        </div>
+        <div style="text-align: right">
+          <span class="fb-conta-cartao__rotulo">Titular</span>
+          <strong id="extrato-titular">--</strong>
+        </div>
+      </section>
+
+      <section class="fb-bloco">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Consultar lancamentos</h2>
+          <span class="fb-bloco__nota" id="resumo">consultando...</span>
+        </div>
+
+        <form class="fb-consulta" id="formulario">
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="campo-conta">Numero da conta</label>
+            <input
+              class="fb-campo"
+              id="campo-conta"
+              name="id_conta"
+              placeholder="CLI001"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <button type="submit" class="fb-botao">Consultar</button>
+        </form>
+      </section>
+
+      <section class="fb-erro oculto" id="painel-erro">
+        <h2 class="fb-erro__titulo" id="erro-titulo">Erro na consulta</h2>
+        <p class="fb-erro__texto" id="erro-detalhe"></p>
+
+        <!-- O vazamento do cenario 2 mora aqui. No modo vulneravel o bloco
+             aparece com a mensagem crua do MySQL; no modo seguro ele nem chega a
+             ser preenchido. Nao ha texto de alerta nem caixa de dialogo: um
+             vazamento real aparece num <details>, nao num aviso de sistema. -->
+        <details class="fb-detalhe-tecnico" id="detalhe-tecnico">
+          <summary>Detalhe tecnico da consulta</summary>
+          <pre id="erro-sql"></pre>
+        </details>
+      </section>
+
+      <section class="fb-bloco oculto" id="painel-tabela">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Lancamentos</h2>
+          <span class="fb-bloco__nota">exibidos em ordem cronologica</span>
+        </div>
+
+        <div class="fb-rolagem">
+          <table class="fb-extrato">
+            <thead>
+              <tr>
+                <th scope="col">Lancamento</th>
+                <th scope="col">Conta</th>
+                <th scope="col">Descricao</th>
+                <th scope="col">Valor</th>
+                <th scope="col">Data</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-tabela"></tbody>
+          </table>
+        </div>
+
+        <p class="fb-vazio oculto" id="tabela-vazia">
+          <strong>Conta sem movimentacao</strong>
+          Nenhum lancamento encontrado para este numero de conta.
+        </p>
+      </section>
+
+      <details class="motivo">
+        <summary>Resposta da API</summary>
+        <pre id="json-resposta"></pre>
+      </details>
+    </main>
+
+    <footer class="fb-rodape">
+      <div class="largura-max">
+        <div class="fb-rodape__grade">
+          <span>FinBank S.A. — Instituicao de pagamento ficticia</span>
+          <span>CNPJ 00.000.000/0001-00</span>
+        </div>
+        <p class="fb-rodape__aviso">
+          Ambiente de treinamento. Todos os clientes, agencias, transacoes e
+          documentos apresentados sao sinteticos.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { buscarConta, iniciarFinBank } from '/js/finbank.js';
+      import { mostrarJson, preencherTexto } from '/js/lab.js';
+
+      await iniciarFinBank();
+
+      const formulario = document.querySelector('#formulario');
+      const campo = /** @type {HTMLInputElement} */ (
+        document.querySelector('#campo-conta')
+      );
+      const corpo = document.querySelector('#corpo-tabela');
+      const vazio = document.querySelector('#tabela-vazia');
+      const resumo = document.querySelector('#resumo');
+      const json = document.querySelector('#json-resposta');
+      const painelErro = document.querySelector('#painel-erro');
+      const erroTitulo = document.querySelector('#erro-titulo');
+      const erroDetalhe = document.querySelector('#erro-detalhe');
+      const detalheTecnico = document.querySelector('#detalhe-tecnico');
+      const erroSql = document.querySelector('#erro-sql');
+      const painelTabela = document.querySelector('#painel-tabela');
+
+      formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        consultar(campo.value);
+      });
+
+      /**
+       * Mostra os lancamentos de uma conta e pinta o cartao do topo.
+       *
+       * O titular vem de `clientes`, separado dos lancamentos: e a mesma conta,
+       * lida em duas tabelas, como num extrato de verdade -- e assim o extrato
+       * mostra nome e dinheiro sem depender da consulta de erro.
+       */
+      async function consultar(idConta) {
+        const parametros = new URLSearchParams();
+        parametros.set('id_conta', idConta);
+
+        const resposta = await fetch(`/banco/extrato?${parametros.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+          desenharErro(resposta.status, dados);
+        } else {
+          desenharLancamentos(dados);
+        }
+
+        mostrarJson(json, dados);
+        await pintarCartao(dados.conta);
+      }
+
+      async function pintarCartao(idConta) {
+        preencherTexto(document.querySelector('#extrato-conta'), idConta || '--');
+
+        if (!idConta) {
+          preencherTexto(document.querySelector('#extrato-titular'), '--');
+          return;
+        }
+
+        const cliente = await buscarConta(idConta);
+        preencherTexto(
+          document.querySelector('#extrato-titular'),
+          cliente ? String(cliente.nome) : 'Conta nao encontrada',
+        );
+      }
+
+      /**
+       * Erro devolvido ao cliente.
+       *
+       * No modo vulneravel a resposta traz `detalhes.sqlMessage`, e a senha
+       * sintetica do administrador aparece dentro da mensagem de erro do MySQL.
+       * No modo seguro chega apenas a mensagem generica, sem a chave `detalhes`
+       * -- e o <details> nem entra na tela, porque nao ha o que mostrar.
+       */
+      function desenharErro(status, dados) {
+        painelErro.classList.remove('oculto');
+        painelTabela.classList.add('oculto');
+
+        const vazamento = dados?.detalhes?.sqlMessage ?? null;
+
+        preencherTexto(
+          erroTitulo,
+          vazamento
+            ? `HTTP ${status} — a consulta falhou`
+            : `HTTP ${status} — erro na consulta`,
+        );
+        preencherTexto(
+          erroDetalhe,
+          dados?.erro ?? 'Erro ao consultar o banco de dados.',
+        );
+
+        detalheTecnico.classList.toggle('oculto', !vazamento);
+        preencherTexto(erroSql, vazamento ?? '');
+        preencherTexto(resumo, 'consulta nao concluida');
+      }
+
+      function desenharLancamentos(dados) {
+        painelErro.classList.add('oculto');
+        painelTabela.classList.remove('oculto');
+
+        const lancamentos = dados.lancamentos ?? [];
+        const fragmento = document.createDocumentFragment();
+
+        for (const lancamento of lancamentos) {
+          const tr = document.createElement('tr');
+
+          const celulas = [
+            lancamento.id_lancamento,
+            lancamento.id_conta,
+            lancamento.descricao,
+          ];
+
+          for (const valor of celulas) {
+            const td = document.createElement('td');
+            td.textContent = valor ?? '';
+            tr.append(td);
+          }
+
+          /**
+           * O valor vem de VARCHAR, ja com sinal e separadores ("-R$ 799,00").
+           * A cor segue o primeiro caractere e nao ha conversao numerica: um
+           * parse de moeda em JS depende do locale do navegador, e o laboratorio
+           * ja nasceu sem nenhum parse desses.
+           */
+          const valor = String(lancamento.valor ?? '');
+          const tdValor = document.createElement('td');
+          tdValor.className = `dinheiro ${valor.trim().startsWith('-')
+            ? 'dinheiro--negativo'
+            : 'dinheiro--positivo'}`;
+          tdValor.textContent = valor;
+          tr.append(tdValor);
+
+          /**
+           * `data_lancamento` e VARCHAR no schema do laboratorio (o init.sql
+           * declara VARCHAR(20)), e o valor ja vem como 'AAAA-MM-DD'. Passar por
+           * Date aqui so criaria um fuso no meio de um campo que ja esta certo.
+           */
+          const tdData = document.createElement('td');
+          tdData.textContent = lancamento.data_lancamento ?? '';
+          tr.append(tdData);
+
+          fragmento.append(tr);
+        }
+
+        corpo.replaceChildren(fragmento);
+        vazio.classList.toggle('oculto', lancamentos.length > 0);
+        preencherTexto(
+          resumo,
+          `${lancamentos.length} lancamento(s) na conta "${dados.conta}".`,
+        );
+      }
+
+/**
+       * Conta da tela, lida da query string.
+       *
+       * Sem isto, o botao de retorno do console do instrutor levaria de volta
+       * para uma pagina com `CLI001` na tela, enquanto a demonstracao era sobre
+       * `98765`: a navegacao contextual (DAS v2.4, secao 16.2) existe para
+       * reconstruir o estado, nao apenas a rota. O default continua sendo
+       * `CLI001` -- uma tabela vazia na entrada faria o aluno suspeitar do
+       * laboratorio antes de chegar no cenario.
+       *
+       * O valor vai para a URL como query string e nao para o innerHTML: e
+       * `textContent` no `#extrato-conta`, entao o proprio parametro da query
+       * string nao vira mais um ponto de XSS reflexivo.
+       */
+      const contaDaUrl =
+        new URLSearchParams(window.location.search).get('id_conta') || 'CLI001';
+
+      await consultar(contaDaUrl);
+    </script>
+  </body>
+</html>

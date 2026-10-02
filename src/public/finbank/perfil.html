@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meu perfil — FinBank</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/finbank.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--finbank" data-app="finbank">
+    <header class="fb-topo">
+      <div class="fb-topo__interno">
+        <a class="fb-marca" href="/finbank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 9.5 12 4l9 5.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 10v7M9.7 10v7M14.3 10v7M19 10v7M3.5 20h17" stroke-linecap="round" />
+          </svg>
+          <span class="fb-marca__nome">FinBank</span>
+        </a>
+
+        <nav class="fb-nav" aria-label="Navegacao principal">
+          <a href="/finbank">Inicio</a>
+          <a href="/finbank/agencias">Agencias</a>
+          <a href="/finbank/extrato">Extrato</a>
+          <a href="/finbank/comunicados">Comunicados</a>
+          <a href="/finbank/perfil" aria-current="page">Perfil</a>
+        </nav>
+
+        <div class="fb-conta">
+          <div class="fb-conta__texto">
+            <span class="fb-conta__nome" id="conta-nome">--</span>
+            <span class="fb-conta__id" id="conta-id">--</span>
+          </div>
+          <span class="fb-conta__avatar" id="conta-avatar">--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="fb-conteudo">
+      <nav class="fb-migalha" aria-label="Trilha de navegacao">
+        <a href="/finbank">Inicio</a>
+        <span aria-hidden="true">/</span>
+        <span>Perfil</span>
+      </nav>
+
+      <h1 class="fb-titulo fb-titulo--pagina">Meu perfil</h1>
+
+      <!-- ===================================================================
+           Cenario 5: segundo XSS armazenado do laboratorio (DAS v2.4, secao 8)
+
+           O mesmo armazenamento de marcação do ChefLab, o mesmo banco, a mesma
+           aplicacao -- em um produto diferente. O DAS escolheu uma area de
+           perfil do cliente por razao didatica: quem terminasse o roteiro
+           sabendo apenas que "portal de comentarios tem XSS" levaria essa
+           conclusao para casa. Vindo o mesmo sink em duas telas do mesmo
+           sistema, a conclusao que sobra e sobre o CONTEXTO DE RENDERIZACAO,
+           e nao sobre o produto onde o aluno por acaso testou.
+
+           Nao ha nesta pagina nenhum aviso dizendo em que modo ela esta. O
+           texto de "o que muda aqui" mora no roteiro de /palco, e a barra de
+           modo faz o resto -- igual ao ChefLab.
+           =================================================================== -->
+
+      <section class="fb-bloco">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Descricao do perfil</h2>
+          <span class="fb-bloco__nota" id="perfil-resumo">consultando...</span>
+        </div>
+
+        <form id="formulario-perfil" autocomplete="off">
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="perfil-id-cliente">Codigo do cliente</label>
+            <!-- maxlength espelha LIMITE_CLIENTE em src/repositories/perfilRepository.js.
+                 E validacao de cliente: quem chamar POST /banco/perfil com curl
+                 envia o que quiser, e o servidor confere o mesmo limite. -->
+            <input
+              class="fb-campo"
+              id="perfil-id-cliente"
+              name="id_cliente"
+              value="CLI001"
+              maxlength="20"
+              spellcheck="false"
+            />
+          </div>
+
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="perfil-descricao-forma">
+              Texto do perfil
+            </label>
+            <textarea
+              class="fb-campo"
+              id="perfil-descricao-forma"
+              name="descricao_perfil"
+              rows="5"
+              maxlength="2000"
+              placeholder="Conte em poucas linhas o que voce quer que apareca no seu perfil."
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <div class="fb-acoes">
+            <button type="submit" class="fb-botao">Salvar perfil</button>
+            <span class="fb-bloco__nota" id="aviso-perfil" role="status"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="fb-bloco oculto" id="perfil-painel">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Perfil de <span id="perfil-cliente">--</span></h2>
+          <span class="fb-bloco__nota" id="perfil-registro">registro #--</span>
+        </div>
+
+        <!-- Contrato com perfil.js e com o E2E: nao renomear. Este e o sink.
+             No modo vulneravel o texto entra por innerHTML; no seguro, por
+             textContent. Ver os dois renderizadores em perfil.js. -->
+        <p class="fb-perfil__texto" id="perfil-descricao"></p>
+      </section>
+
+      <p class="fb-vazio oculto" id="perfil-vazio">
+        <strong>Este cliente ainda nao tem descricao</strong>
+        O cadastro existe, mas o texto do perfil nao foi preenchido.
+      </p>
+
+      <!-- ===================================================================
+           Cenario 6: campos de leitura por payload (DAS v2.4, secao 10)
+
+           Estes dois campos existem para uma unica coisa: dar ao payload uma
+           fonte de dados para ler, e um lugar na tela para mostrar o que leu.
+
+           O painel #lab-eventos existe em DOM nos DOIS modos, e isso e
+           intencional. No seguro ele nunca recebe nada, porque o payload nao
+           roda; e essa ausencia de texto no painel, comparada com o que
+           apareceu no vuln, e o que prova que o script nao executou.
+
+           Os campos sao `type="text"` de proposito. Com `type="password"` o
+           valor digitado fica ilegivel na tela e o aluno nao consegue conferir
+           visualmente o que o payload capturou -- o laboratorio ganha em mostrar
+           a captura funcionando.
+
+           Os dados sao FICTICIOS e o painel e LOCAL: a leitura acontece no
+           navegador, o texto aparece nesta tela, e nada e enviado para fora.
+           =================================================================== -->
+      <section class="fb-bloco fb-lab-bloco">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Dados de laboratorio</h2>
+          <span class="fb-bloco__nota">sinteticos e apenas locais</span>
+        </div>
+
+        <p class="fb-lab-aviso">
+          Digite qualquer coisa ficticia nos campos abaixo. Eles nao pedem cartao
+          real, nao pedem senha real e nao sao enviados para nenhum servidor.
+        </p>
+
+        <div class="fb-lab-campos">
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="lab-senha">Senha de teste</label>
+            <!-- data-lab-input e o gancho do payload didatico. O atributo e
+                 o contrato com o roteiro de /palco: o payload localiza o campo
+                 por ele, e nao por id ou por posicao na tela, para que a ordem
+                 dos campos possa mudar sem quebrar a demonstracao. -->
+            <input
+              class="fb-campo"
+              id="lab-senha"
+              data-lab-input="senha"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="lab-cartao">Cartao de teste</label>
+            <input
+              class="fb-campo"
+              id="lab-cartao"
+              data-lab-input="cartao"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+        </div>
+
+        <div class="fb-lab-saida">
+          <span class="fb-lab-saida__rotulo">Leitura pelo payload</span>
+          <pre class="fb-lab-eventos" id="lab-eventos"></pre>
+        </div>
+      </section>
+
+      <details class="motivo">
+        <summary>Resposta da API</summary>
+        <pre id="json-resposta"></pre>
+      </details>
+    </main>
+
+    <footer class="fb-rodape">
+      <div class="largura-max">
+        <div class="fb-rodape__grade">
+          <span>FinBank S.A. — Instituicao de pagamento ficticia</span>
+          <span>CNPJ 00.000.000/0001-00</span>
+        </div>
+        <p class="fb-rodape__aviso">
+          Ambiente de treinamento. Todos os clientes, agencias, transacoes,
+          documentos e dados de laboratorio apresentados sao sinteticos.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="/finbank/perfil.js"></script>
+  </body>
+</html>

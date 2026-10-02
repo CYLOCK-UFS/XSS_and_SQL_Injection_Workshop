@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comunicado — FinBank</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/finbank.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--finbank" data-app="finbank">
+    <header class="fb-topo">
+      <div class="fb-topo__interno">
+        <a class="fb-marca" href="/finbank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 9.5 12 4l9 5.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 10v7M9.7 10v7M14.3 10v7M19 10v7M3.5 20h17" stroke-linecap="round" />
+          </svg>
+          <span class="fb-marca__nome">FinBank</span>
+        </a>
+
+        <nav class="fb-nav" aria-label="Navegacao principal">
+          <a href="/finbank">Inicio</a>
+          <a href="/finbank/agencias">Agencias</a>
+          <a href="/finbank/extrato">Extrato</a>
+          <a href="/finbank/comunicados" aria-current="page">Comunicados</a>
+          <a href="/finbank/perfil">Perfil</a>
+        </nav>
+
+        <div class="fb-conta">
+          <div class="fb-conta__texto">
+            <span class="fb-conta__nome" id="conta-nome">--</span>
+            <span class="fb-conta__id" id="conta-id">--</span>
+          </div>
+          <span class="fb-conta__avatar" id="conta-avatar">--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="fb-conteudo">
+      <nav class="fb-migalha" aria-label="Trilha de navegacao">
+        <a href="/finbank">Inicio</a>
+        <span aria-hidden="true">/</span>
+        <a href="/finbank/comunicados">Comunicados</a>
+        <span aria-hidden="true">/</span>
+        <span id="migalha-id">consulta</span>
+      </nav>
+
+      <h1 class="fb-titulo fb-titulo--pagina">Consulta de comunicado</h1>
+      <p class="fb-legenda">
+        Informe o numero do comunicado publicado pelo banco.
+      </p>
+
+      <section class="fb-bloco">
+        <form class="fb-consulta" id="formulario">
+          <div class="fb-campo-grupo">
+            <label class="fb-rotulo" for="campo-id">Numero do comunicado</label>
+            <input
+              class="fb-campo"
+              id="campo-id"
+              name="id"
+              placeholder="5"
+              autocomplete="off"
+              spellcheck="false"
+              inputmode="text"
+            />
+          </div>
+          <button type="submit" class="fb-botao">Consultar</button>
+          <button type="button" class="fb-botao fb-botao--fantasma" id="botao-exemplo">
+            Abrir comunicado 5
+          </button>
+        </form>
+      </section>
+
+      <article class="fb-bloco oculto" id="artigo">
+        <h2 class="fb-titulo" id="artigo-titulo" style="font-size: var(--t-22)"></h2>
+        <p class="fb-artigo__data">
+          Publicado em <time id="artigo-data" datetime=""></time>
+        </p>
+        <p class="fb-artigo__corpo" id="artigo-corpo"></p>
+      </article>
+
+      <section class="fb-bloco oculto" id="nao-encontrado">
+        <p class="fb-vazio">
+          <strong>Comunicado nao encontrado</strong>
+          Nenhum comunicado publicado com esse numero.
+        </p>
+      </section>
+
+      <details class="motivo">
+        <summary>Resposta da API</summary>
+        <pre id="json-resposta"></pre>
+      </details>
+    </main>
+
+    <footer class="fb-rodape">
+      <div class="largura-max">
+        <div class="fb-rodape__grade">
+          <span>FinBank S.A. — Instituicao de pagamento ficticia</span>
+          <span>CNPJ 00.000.000/0001-00</span>
+        </div>
+        <p class="fb-rodape__aviso">
+          Ambiente de treinamento. Todos os clientes, agencias, transacoes e
+          documentos apresentados sao sinteticos.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { iniciarFinBank } from '/js/finbank.js';
+      import {
+        formatarData,
+        mostrarJson,
+        paraDataTime,
+        preencherTexto,
+      } from '/js/lab.js';
+
+      await iniciarFinBank();
+
+      const formulario = document.querySelector('#formulario');
+      const campo = /** @type {HTMLInputElement} */ (
+        document.querySelector('#campo-id')
+      );
+      const artigo = document.querySelector('#artigo');
+      const titulo = document.querySelector('#artigo-titulo');
+      const data = document.querySelector('#artigo-data');
+      const corpo = document.querySelector('#artigo-corpo');
+      const naoEncontrado = document.querySelector('#nao-encontrado');
+      const json = document.querySelector('#json-resposta');
+      const migalha = document.querySelector('#migalha-id');
+
+      document.querySelector('#botao-exemplo').addEventListener('click', () => {
+        campo.value = '5';
+        consultar('5');
+      });
+
+      formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        consultar(campo.value);
+      });
+
+      /**
+       * Consulta o comunicado pelo id.
+       *
+       * O que a tela mostra e so o resultado: 200 desenha o texto, 404 desenha o
+       * aviso de "nao encontrado". Nao ha nenhuma diferenca visual entre os dois
+       * modos aqui -- e essa e a razao do cenario ser chamado de ORACULO: a
+       * unica informacao que o atacante extrai e o status HTTP, entao a tela
+       * precisa apresentar 200 e 404 como estados distintos e silenciosos, sem
+       * nenhum texto que entregue a resposta antes da hora.
+       */
+      async function consultar(id) {
+        const parametros = new URLSearchParams();
+        parametros.set('id', id);
+
+        const resposta = await fetch(`/banco/noticia?${parametros.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
+        const dados = await resposta.json();
+
+        preencherTexto(migalha, id || 'consulta');
+
+        if (resposta.ok && dados.noticia) {
+          desenharNoticia(dados.noticia);
+        } else {
+          desenharAusente();
+        }
+
+        mostrarJson(json, dados);
+      }
+
+      function desenharNoticia(noticia) {
+        artigo.classList.remove('oculto');
+        naoEncontrado.classList.add('oculto');
+
+        preencherTexto(titulo, noticia.titulo);
+        preencherTexto(corpo, noticia.conteudo);
+
+        // A data e VARCHAR no schema (`AAAA-MM-DD`) e nao tem hora: um <time>
+        // aqui marcaria meia-noite UTC numa noticia que e do dia inteiro.
+        const bruto = String(noticia.data_publicacao ?? '');
+        data.textContent = formatarData(bruto);
+        data.setAttribute('datetime', paraDataTime(bruto));
+      }
+
+      function desenharAusente() {
+        artigo.classList.add('oculto');
+        naoEncontrado.classList.remove('oculto');
+      }
+
+      /**
+       * A pagina aceita o id na query string, para o link do mural funcionar.
+       * Sem parametro, abre o comunicado 5 -- o registro-base do roteiro.
+       */
+      const inicial = new URLSearchParams(window.location.search).get('id') ?? '5';
+      campo.value = inicial;
+      await consultar(inicial);
+    </script>
+  </body>
+</html>

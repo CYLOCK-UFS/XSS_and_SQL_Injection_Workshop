@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-modo="vuln">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinBank — Autoatendimento</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/lab.css" />
+    <link rel="stylesheet" href="/css/finbank.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/escudo-liga-32.png" />
+    <link rel="apple-touch-icon" href="/img/escudo-liga-180.png" />
+  </head>
+  <body class="app--finbank" data-app="finbank">
+    <header class="fb-topo">
+      <div class="fb-topo__interno">
+        <a class="fb-marca" href="/finbank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 9.5 12 4l9 5.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 10v7M9.7 10v7M14.3 10v7M19 10v7M3.5 20h17" stroke-linecap="round" />
+          </svg>
+          <span class="fb-marca__nome">FinBank</span>
+        </a>
+
+        <nav class="fb-nav" aria-label="Navegacao principal">
+          <a href="/finbank" aria-current="page">Inicio</a>
+          <a href="/finbank/agencias">Agencias</a>
+          <a href="/finbank/extrato">Extrato</a>
+          <a href="/finbank/comunicados">Comunicados</a>
+          <a href="/finbank/perfil">Perfil</a>
+        </nav>
+
+        <div class="fb-conta">
+          <div class="fb-conta__texto">
+            <span class="fb-conta__nome" id="conta-nome">--</span>
+            <span class="fb-conta__id" id="conta-id">--</span>
+          </div>
+          <span class="fb-conta__avatar" id="conta-avatar">--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="fb-conteudo">
+      <h1 class="fb-titulo">Visao geral</h1>
+      <p class="fb-legenda">
+        Consulta de agencias, extrato da conta e comunicados do banco.
+      </p>
+
+      <div class="fb-heroi">
+        <section class="fb-saldo">
+          <span class="fb-saldo__rotulo">Saldo em conta</span>
+          <strong class="fb-saldo__valor dinheiro" id="saldo-valor">--</strong>
+          <div class="fb-saldo__linha">
+            <span id="saldo-conta">conta --</span>
+            <span>Atualizado agora</span>
+          </div>
+        </section>
+
+        <nav class="fb-atalhos" aria-label="Atalhos">
+          <a class="fb-atalho" href="/finbank/agencias">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M4 20V9.5L12 4l8 5.5V20" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M9.5 20v-5h5v5M2.5 20h19" stroke-linecap="round" />
+            </svg>
+            <span>
+              <span class="fb-atalho__titulo">Rede de agencias</span>
+              <span class="fb-atalho__nota">Endereco e telefone por cidade</span>
+            </span>
+          </a>
+
+          <a class="fb-atalho" href="/finbank/extrato">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M5 4h14v16l-2.3-1.6L14.4 20l-2.4-1.6L9.6 20l-2.3-1.6L5 20z" stroke-linejoin="round" />
+              <path d="M9 9h6M9 13h6" stroke-linecap="round" />
+            </svg>
+            <span>
+              <span class="fb-atalho__titulo">Extrato</span>
+              <span class="fb-atalho__nota">Lancamentos da conta</span>
+            </span>
+          </a>
+
+          <a class="fb-atalho" href="/finbank/comunicados">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M4 9.5h3l5.5-3.5v12L7 14.5H4z" stroke-linejoin="round" />
+              <path d="M16 9.2a4 4 0 0 1 0 5.6M18.6 6.6a7.4 7.4 0 0 1 0 10.8" stroke-linecap="round" />
+            </svg>
+<span>
+              <span class="fb-atalho__titulo">Comunicados</span>
+              <span class="fb-atalho__nota">Avisos do FinBank</span>
+            </span>
+          </a>
+
+          <!-- Cenario 5 (DAS v2.4, secao 8). O atalho entra na home porque o
+               roteiro chega aqui depois do ChefLab, e uma tela a mais na barra
+               de navegacao nao seria o bastante para o aluno achar. O titulo
+               nao diz "XSS" nem "descricao do perfil": e um autoatendimento, e
+               o cenario precisa estar presente sem estar anunciado. -->
+          <a class="fb-atalho" href="/finbank/perfil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <circle cx="12" cy="8.5" r="3.5" stroke-linecap="round" />
+              <path d="M5 20c1.3-3.6 3.8-5.4 7-5.4s5.7 1.8 7 5.4" stroke-linecap="round" />
+            </svg>
+            <span>
+              <span class="fb-atalho__titulo">Meu perfil</span>
+              <span class="fb-atalho__nota">Dados e descricao do cadastro</span>
+            </span>
+          </a>
+        </nav>
+      </div>
+
+      <section class="fb-bloco">
+        <div class="fb-bloco__cabecalho">
+          <h2 class="fb-bloco__titulo">Comunicados recentes</h2>
+          <a class="fb-bloco__nota" href="/finbank/comunicados">ver todos</a>
+        </div>
+        <div class="fb-comunicados" id="lista-comunicados"></div>
+        <p class="fb-vazio oculto" id="comunicados-vazio">
+          <strong>Nenhum comunicado</strong>
+          O banco nao publicou avisos.
+        </p>
+      </section>
+    </main>
+
+    <footer class="fb-rodape">
+      <div class="largura-max">
+        <div class="fb-rodape__grade">
+          <span>FinBank S.A. — Instituicao de pagamento ficticia</span>
+          <span>CNPJ 00.000.000/0001-00</span>
+        </div>
+        <p class="fb-rodape__aviso">
+          Ambiente de treinamento. Todos os clientes, agencies, transacoes e
+          documentos apresentados sao sinteticos.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { buscarConta, CONTA_INICIAL, iniciarFinBank } from '/js/finbank.js';
+      import { formatarData, preencherTexto } from '/js/lab.js';
+
+      await iniciarFinBank();
+
+      // Saldo: o valor vem da conta em VARCHAR, ja formatado ("R$ 12.450,00").
+      // Nao ha conversao aqui de proposito -- currency parse em JS depende do
+      // locale e viraria a terceira fonte de bug de numero desta oficina.
+      const cliente = await buscarConta(CONTA_INICIAL);
+      if (cliente) {
+        preencherTexto(document.querySelector('#saldo-valor'), cliente.saldo_conta);
+        preencherTexto(
+          document.querySelector('#saldo-conta'),
+          `conta ${cliente.id_cliente}`,
+        );
+      }
+
+      // Mural: tres avisos mais recentes, no mesmo endpoint da pagina de
+      // comunicados. Recarregar o mural inteiro aqui e o mais simples, e o custo
+      // e uma tabela de oito linhas.
+      try {
+        const resposta = await fetch('/banco/comunicados', {
+          headers: { Accept: 'application/json' },
+        });
+        const dados = await resposta.json();
+
+        const lista = document.querySelector('#lista-comunicados');
+        const fragmento = document.createDocumentFragment();
+
+        for (const comunicado of (dados.comunicados ?? []).slice(0, 3)) {
+          const link = document.createElement('a');
+          link.className = 'fb-comunicado';
+          link.href = `/finbank/noticia?id=${encodeURIComponent(comunicado.id)}`;
+
+          const data = document.createElement('span');
+          data.className = 'fb-comunicado__data';
+          data.textContent = formatarData(comunicado.data_publicacao);
+
+          const corpo = document.createElement('span');
+          const titulo = document.createElement('strong');
+          titulo.className = 'fb-comunicado__titulo';
+          titulo.textContent = comunicado.titulo;
+          corpo.append(titulo);
+
+          link.append(data, corpo);
+          fragmento.append(link);
+        }
+
+        lista.replaceChildren(fragmento);
+        document
+          .querySelector('#comunicados-vazio')
+          .classList.toggle('oculto', (dados.comunicados ?? []).length > 0);
+      } catch (erro) {
+        console.warn('[finbank] mural indisponivel:', erro.message);
+      }
+    </script>
+  </body>
+</html>

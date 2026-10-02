@@ -1,0 +1,168 @@
+Guia Prático: Implantação de
+Laboratório Multi-Container (XSS e SQL
+Injection) na AWS EC2
+Este documento descreve o procedimento passo a passo para configurar uma instância na
+AWS, clonar o repositório de segurança e inicializar 13 ambientes de laboratório isolados
+utilizando Docker e Docker Compose.
+
+1. Pré-requisitos
+●​ Uma conta ativa na AWS (com créditos educacionais ou AWS Academy).
+●​ Um cliente SSH configurado (como o terminal WSL no Windows ou o PowerShell).
+●​ Um Token de Acesso Pessoal (PAT) do GitHub para clonar repositórios privados.
+
+2. Criação e Configuração da Instância EC2 na AWS
+1.​ Aceda à consola da AWS e abra o painel do EC2.
+2.​ Clique em Iniciar instância (Launch instance).
+3.​ Nome e Tags: Atribua um nome à instância (ex: Bancadas-Lab).
+4.​ AMI (Sistema Operativo): Selecione o Ubuntu (recomenda-se Ubuntu 24.04 ou 26.04
+LTS).
+5.​ Tipo de instância: Escolha t3.large (essencial para suportar confortavelmente a
+execução simultânea de 13 contentores de aplicação e 13 bases de dados).
+6.​ Par de chaves (Key pair): Crie um novo par de chaves do tipo .pem (ex:
+Bancadas-Lab-1.pem) e guarde-o no seu computador.
+7.​ Rede e Firewall (Security Group):
+○​ Crie um novo grupo de segurança permitindo tráfego SSH (Porta 22) a partir do
+seu IP.
+○​ Adicione uma regra de TCP Personalizado (Custom TCP) com o intervalo de
+portas 3000 - 3015 e origem 0.0.0.0/0 (para permitir o acesso dos alunos aos
+laboratórios via navegador).
+8.​ Clique em Iniciar instância.
+
+3. Ligar à Instância via SSH
+1.​ No seu computador, abra o terminal (no diretório onde guardou o ficheiro .pem).
+2.​ Restrinja as permissões do ficheiro de chave (obrigatório para o SSH):​
+Bash​
+chmod 400 Bancadas-Lab-1.pem​
+3.​ Efetue a ligação utilizando o IP público da sua instância AWS:​
+
+Bash​
+ssh -i "Bancadas-Lab-1.pem" ubuntu@IP_PUBLICO_DA_MAQUINA​
+​
+(Escreva yes caso apareça um aviso de segurança na primeira ligação).
+
+4. Instalação de Dependências (Docker, Docker
+Compose e Git)
+Com o terminal já dentro da máquina virtual da AWS, execute os comandos de atualização e
+instalação:
+
+Bash
+sudo apt update && sudo apt upgrade -y​
+sudo apt install docker.io docker-compose-v2 git -y​
+Para permitir que o utilizador atual execute comandos do Docker sem precisar de sudo:
+
+Bash
+sudo usermod -aG docker $USER​
+newgrp docker​
+
+5. Clonagem do Repositório do Projeto
+Faça o clone do repositório da aplicação (substitua pelo URL correto do seu projeto):
+
+Bash
+git clone https://github.com/CYLOCK-UFS/XSS_and_SQL_Injection_Workshop.git​
+cd XSS_and_SQL_Injection_Workshop​
+(Nota: Se o repositório for privado, utilize o seu nome de utilizador do GitHub e insira o seu
+Token PAT em vez da palavra-passe).
+
+6. Configuração do Ficheiro docker-compose.yml
+Abra o ficheiro de orquestração no editor de texto Nano:
+
+Bash
+nano docker-compose.yml​
+Substitua todo o conteúdo do ficheiro pelo código abaixo (garantindo que os nomes dos
+contentores são dinâmicos para evitar conflitos nas 13 bancadas):
+
+YAML
+services:​
+db:​
+image: mysql:8.0.46-bookworm​
+restart: unless-stopped​
+environment:​
+MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-lab_root_password}​
+MYSQL_DATABASE: ${DB_NAME:-lab_palestra}​
+MYSQL_USER: ${DB_USER:-lab_user}​
+MYSQL_PASSWORD: ${DB_PASSWORD:-lab_password}​
+volumes:​
+- db_data:/var/lib/mysql​
+- ./database/00-grants.sql:/docker-entrypoint-initdb.d/00-grants.sql:ro​
+- ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro​
+healthcheck:​
+test:​
+[​
+"CMD-SHELL",​
+"mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent",​
+]​
+interval: 5s​
+timeout: 5s​
+retries: 5​
+​
+app:​
+build: .​
+restart: unless-stopped​
+ports:​
+- "0.0.0.0:${APP_PORT}:3000"​
+environment:​
+HOST: ${HOST:-0.0.0.0}​
+DB_HOST: ${DB_HOST:-db}​
+DB_PORT: ${DB_PORT:-3306}​
+DB_USER: ${DB_USER:-lab_user}​
+
+DB_PASSWORD: ${DB_PASSWORD:-lab_password}​
+DB_NAME: ${DB_NAME:-lab_palestra}​
+depends_on:​
+db:​
+condition: service_healthy​
+​
+volumes:​
+db_data:​
+Guarde e saia pressionando Ctrl+O, Enter, e depois Ctrl+X.
+
+7. Criação do Script de Automação das 13 Bancadas
+Crie o script de inicialização em massa:
+
+Bash
+nano iniciar_labs.sh​
+Cole o seguinte código no editor:
+
+Bash
+#!/bin/bash​
+​
+for i in {1..13}; do​
+PORTA_ALUNO=$((3000 + i))​
+export COMPOSE_PROJECT_NAME="bancada_$i"​
+export APP_PORT=$PORTA_ALUNO​
+​
+export HOST=0.0.0.0​
+export DB_HOST=db​
+export DB_PORT=3306​
+export DB_USER=lab_user​
+export DB_PASSWORD=lab_password​
+export DB_NAME=lab_palestra​
+export DB_ROOT_PASSWORD=lab_root_password​
+​
+echo "A iniciar laboratório $COMPOSE_PROJECT_NAME na porta $PORTA_ALUNO..."​
+docker compose up --build -d​
+done​
+
+​
+echo "Todos os 13 laboratórios foram iniciados com sucesso!"​
+Guarde e saia pressionando Ctrl+O, Enter, e Ctrl+X.
+
+8. Execução e Acesso
+1.​ Conceda permissão de execução ao script e inicie os ambientes:​
+Bash​
+chmod +x iniciar_labs.sh​
+./iniciar_labs.sh​
+2.​ Aceder aos laboratórios: Abra o navegador web e aceda às bancadas utilizando o IP
+público da instância e a porta correspondente (de :3001 a :3013). Exemplo:​
+http://IP_PUBLICO_DA_AWS:3001
+
+9. Limpeza e Encerramento (Importante para evitar
+custos)
+Assim que terminar a atividade ou a mostra tecnológica:
+1.​ Volte ao painel da AWS EC2.
+2.​ Selecione a instância.
+3.​ Clique em Estado da instância > Terminar instância (Terminate instance). Isto assegura
+que os recursos são totalmente eliminados e que os créditos não são consumidos
+indevidamente.
+
+

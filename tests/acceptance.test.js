@@ -1,5 +1,16 @@
 /**
- * Plano de testes de aceitacao do DAS v2.2, secao 10 (T01-T09).
+ * Plano de testes de aceitacao: T01-T13.
+ *
+ * T01-T09 sao o plano do DAS v2.2 (secao 10), T11 as leituras de apoio do
+ * DAS v2.3, e T12/T13 os dois cenarios do DAS v2.4 que tem contrato HTTP -- o
+ * perfil e o cookie didatico. O keylogger e a prova de comportamento de
+ * navegador e fica em tests/e2e/perfil.spec.js, junto com o XSS do perfil e o
+ * painel de mitigacoes do console.
+ *
+ * A NUMERACAO NAO COINCIDE COM A DO DAS. O plano deste repositorio ja usava
+ * T11 antes da v2.4, e renumerar tudo nao traria ganho nenhum: cada bloco novo
+ * declara de qual teste do DAS ele veio, entao a referencia cruzada se mantem
+ * sem reescrever o material de apresentacao.
  *
  * Os testes rodam NO HOST, contra o MySQL publicado em 127.0.0.1:3306, e nao
  * dentro do container: o Dockerfile instala com --omit=dev, entao o supertest
@@ -9,7 +20,7 @@
  *   npm test
  *
  * A aplicacao e importada via createApp() (src/app.js) e exercitada com
- * supertest, sem abrir porta: e o que o app.js separation permite.
+ * supertest, sem abrir porta: e o que a separacao em src/app.js permite.
  */
 
 import assert from 'node:assert/strict';
@@ -23,7 +34,20 @@ const api = () => supertest(app);
 
 const UNION =
   "' UNION SELECT titular, numero_cartao, cvv, validade FROM cartoes_credito -- ";
+/**
+ * Payload do cenario de erro, na variante do DAS v2.4.
+ *
+ * O prefixo do CONCAT e o inteiro 1 em vez do hexadecimal 0x7e ('~'). O MySQL
+ * devolve `XPATH syntax error: '1abcde'`, e o primeiro caractere da mensagem
+ * passa a apontar direto a origem do texto: ele veio do CONCAT, nao do banco.
+ * Com o '~' era preciso saber que aquele simbolo era artificial.
+ */
 const EXTRACTEVALUE =
+  "98765' AND EXTRACTVALUE(1, CONCAT(1, (SELECT senha FROM administradores " +
+  "WHERE id_admin='1'))) -- ";
+
+/** A mesma consulta com o prefixo classico 0x7e, mantida por compatibilidade. */
+const EXTRACTEVALUE_CLASSICO =
   "98765' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT senha FROM administradores " +
   "WHERE id_admin='1'))) -- ";
 const BLIND_VERDADEIRO = "5' AND 1=1 -- ";
@@ -87,14 +111,24 @@ after(async () => {
 /* ========================================================================== */
 
 describe('T01 - Docker Compose sobe aplicacao e MySQL com os seeds', () => {
-  it('o health check confirma as 7 tabelas do dicionario do DAS', async () => {
+  it('o health check confirma as 8 tabelas do dicionario do DAS', async () => {
     const resposta = await api().get('/api/health').expect(200);
 
     assert.equal(resposta.body.ok, true);
     assert.equal(resposta.body.banco, 'lab_palestra');
     // Secao 5 do DAS: agencias, cartoes_credito, administradores, clientes,
-    // extratos, noticias e comentarios_receita.
-    assert.equal(resposta.body.tabelas, 7);
+    // extratos, noticias e comentarios_receita. A oitava e perfis_clientes,
+    // criada pelo DAS v2.4 (secao 8) para o cenario de XSS no perfil.
+    assert.equal(resposta.body.tabelas, 8);
+  });
+
+  it('o health check identifica a bancada em controle (DAS v2.4, secao 16.3)', async () => {
+    const resposta = await api().get('/api/health').expect(200);
+
+    // O console do instrutor mostra este valor ao lado do botao de reset. Sem
+    // ele, um `POST /api/reset` disparado na mesa errada destroi a demonstracao
+    // de outro aluno sem deixar rastro.
+    assert.equal(resposta.body.aluno, process.env.LAB_ALUNO_ID || 'aluno01');
   });
 
   it('os registros-base de cada tabela estao carregados', async () => {
@@ -113,6 +147,10 @@ describe('T01 - Docker Compose sobe aplicacao e MySQL com os seeds', () => {
     // Os dois comentarios originais que /api/reset precisa restaurar.
     const receitas = await api().get('/receitas').expect(200);
     assert.equal(receitas.body.total, 2);
+
+    // O perfil-base do cenario de perfil (DAS v2.4, secao 8).
+    const perfil = await api().get('/banco/perfil?id_cliente=CLI001').expect(200);
+    assert.equal(perfil.body.perfil.id_cliente, 'CLI001');
   });
 
   it('a resposta nao carrega o cabecalho X-Powered-By', async () => {
@@ -132,7 +170,8 @@ describe('T01 - Docker Compose sobe aplicacao e MySQL com os seeds', () => {
  * ordem de cada coluna, mais a primary key.
  */
 
-/** Dicionario esperado, transcrito da secao 5 do DAS v2.2. */
+/** Dicionario esperado, transcrito da secao 5 do DAS v2.2 e acrescido de
+ *  `perfis_clientes`, a oitava tabela introduzida pelo DAS v2.4 (secao 8). */
 const DICIONARIO = {
   agencias: {
     pk: 'id_agencia',
@@ -200,6 +239,14 @@ const DICIONARIO = {
       'nome_autor varchar(80)',
       'texto_comentario text',
       'data_postagem datetime',
+    ],
+  },
+  perfis_clientes: {
+    pk: 'id_perfil',
+    colunas: [
+      'id_perfil int',
+      'id_cliente varchar(20)',
+      'descricao_perfil text',
     ],
   },
 };
@@ -472,8 +519,39 @@ describe('T05 - /banco/extrato: cenario de erro com EXTRACTVALUE', () => {
     const resposta = await noModo('vuln', 'get', `/banco/extrato?id_conta=${comPayload(EXTRACTEVALUE)}`);
 
     assert.equal(resposta.status, 500);
-    assert.equal(resposta.body.detalhes.sqlMessage, "XPATH syntax error: '~abcde'");
+    assert.equal(resposta.body.detalhes.sqlMessage, "XPATH syntax error: '1abcde'");
     assert.match(resposta.body.detalhes.sql, /EXTRACTVALUE/);
+  });
+
+  /**
+   * A variante com 0x7e continua valendo, e este teste existe para provar isso.
+   *
+   * O DAS v2.4 passou a pedir `CONCAT(1, ...)` no roteiro, mas o ponto do
+   * cenario e a subquery dentro do EXTRACTVALUE -- o prefixo e marcador visual e
+* nao muda nada. Um teste so para a variante nova deixaria a variante antiga sem
+ * cobertura e, se ela regredisse, ninguem perceberia ate alguem usar o
+ * material antigo de apresentacao.
+ */
+  it('a variante com 0x7e produz o mesmo vazamento', async () => {
+    const resposta = await noModo(
+      'vuln',
+      'get',
+      `/banco/extrato?id_conta=${comPayload(EXTRACTEVALUE_CLASSICO)}`,
+    );
+
+    assert.equal(resposta.status, 500);
+    assert.equal(resposta.body.detalhes.sqlMessage, "XPATH syntax error: '~abcde'");
+  });
+
+  it('a variante com 0x7e nao expoe nada no modo seguro', async () => {
+    const resposta = await noModo(
+      'safe',
+      'get',
+      `/banco/extrato?id_conta=${comPayload(EXTRACTEVALUE_CLASSICO)}`,
+    );
+
+    assert.equal(resposta.status, 200);
+    assert.equal(resposta.body.total, 0);
   });
 
   it('no modo seguro nao ha erro, porque o payload nunca vira SQL', async () => {
@@ -632,7 +710,7 @@ describe('T07 - /receitas: o INSERT e parametrizado nos dois modos', () => {
   it('a renderizacao vulneravel usa innerHTML e a segura usa textContent', async () => {
     const { readFile } = await import('node:fs/promises');
     const codigo = await readFile(
-      new URL('../src/public/receitas/receitas.js', import.meta.url),
+      new URL('../src/public/cheflab/receita.js', import.meta.url),
       'utf8',
     );
 
@@ -663,7 +741,7 @@ describe('T08 - POST /api/reset restaura o estado inicial completo', () => {
 
     const resposta = await api().post('/api/reset').expect(200);
     assert.equal(resposta.body.ok, true);
-    assert.equal(resposta.body.tabelas, 7);
+    assert.equal(resposta.body.tabelas, 8);
 
     const comentarios = await api().get('/receitas').expect(200);
     assert.equal(comentarios.body.total, 2);
@@ -677,6 +755,23 @@ describe('T08 - POST /api/reset restaura o estado inicial completo', () => {
 
     const noticia = await api().get('/banco/noticia?id=5').expect(200);
     assert.equal(noticia.body.noticia.titulo, NOTICIA_BASE);
+  });
+
+  it('restaura tambem o perfil-base do cenario de perfil', async () => {
+    // O reset precisa alcancar a oitava tabela. Sem esta verificacao, um
+    // `perfis_clientes` que nao volta ao estado inicial passaria despercebido
+    // ate o primeiro aluno que.reloadar a pagina depois de uma apresentacao.
+    const antes = await api()
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: 'descricao de teste' })
+      .expect(201);
+
+    assert.notEqual(antes.body.perfil.descricao_perfil, 'descricao de teste');
+
+    await api().post('/api/reset').expect(200);
+
+    const depois = await api().get('/banco/perfil?id_cliente=CLI001').expect(200);
+    assert.notEqual(depois.body.perfil.descricao_perfil, 'descricao de teste');
   });
 
   it('/receitas/reset funciona como alias do contrato oficial', async () => {
@@ -872,5 +967,413 @@ describe('T10 - os parametros de query sao lidos como texto', () => {
         assert.equal('detalhes' in resposta.body, false);
       }
     }
+  });
+});
+
+/* ========================================================================== */
+/* T11 - Leituras de apoio do autoatendimento (DAS v2.3, secao 4)            */
+/* ========================================================================== */
+/*
+ * As duas rotas que existem para o FinBank parecer um banco: a conta que fica
+ * no cabecalho e o mural de comunicados.
+ *
+ * Nao ha cenario de injecao aqui, e o bloco inteiro existe para travar esse
+ * fato. Nao existe versao vulneravel para testar porque nao existe versao
+ * vulneravel: as funcoes do repository dessas leituras nao recebem `labMode`, e
+ * nao ha caminho que monte texto com o id do cliente ou com o filtro do mural.
+ *
+ * O teste de unidade correspondente (tests/unit/bancoRepository.test.js) prova o
+ * `?` no executor injetado; aqui o que se prova e o contrato HTTP.
+ */
+
+describe('T11 - GET /banco/cliente e GET /banco/comunicados', () => {
+  it('a conta do cabecalho responde igual nos dois modos', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao.get('/banco/cliente/CLI001').expect(200);
+      const { cliente } = resposta.body;
+
+      assert.equal(cliente.id_cliente, 'CLI001');
+      assert.equal(cliente.nome, 'Ana Ribeiro');
+      assert.equal(cliente.cpf, '111.111.111-11');
+      assert.equal(cliente.numero_telefone, '(11) 98888-0001');
+      assert.equal(cliente.saldo_conta, 'R$ 12.450,00');
+      assert.equal('detalhes' in resposta.body, false);
+    }
+  });
+
+  /**
+   * O id vai no caminho, e caminho nao se concatena. Uma aspa no lugar do id
+   * tem de dar 404, e nao 500 com detalhe de SQL: o 500 seria justamente a
+   * prova de que a entrada chegou ao parser como texto.
+   */
+  it('id malformado nao vira erro de banco em nenhum dos dois modos', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const ids = ["CLI001' OR '1'='1", 'CLI001\\', '%27', 'CLI999; DROP TABLE clientes'];
+
+      for (const id of ids) {
+        const resposta = await sessao.get(`/banco/cliente/${encodeURIComponent(id)}`);
+        assert.equal(resposta.status, 404, `id=${id} no modo ${modo}`);
+        assert.equal(resposta.body.erro, 'Cliente nao encontrado.');
+        assert.equal('detalhes' in resposta.body, false);
+      }
+    }
+  });
+
+  it('o mural devolve o seed inteiro, sem o corpo do comunicado', async () => {
+    const resposta = await api().get('/banco/comunicados').expect(200);
+
+    assert.equal(resposta.body.total, 8);
+    assert.equal(resposta.body.comunicados.length, 8);
+
+    for (const comunicado of resposta.body.comunicados) {
+      // `conteudo` fica de fora de proposito: no mural entram so titulo e data.
+      // O texto so aparece na pagina do comunicado, que e o cenario 3.
+      assert.deepEqual(Object.keys(comunicado).sort(), [
+        'data_publicacao',
+        'id',
+        'titulo',
+      ]);
+    }
+
+    // Mais recente primeiro: o init.sql vai de 2024-01-05 a 2024-01-14.
+    assert.equal(resposta.body.comunicados[0].id, '8');
+    assert.equal(resposta.body.comunicados.at(-1).id, '1');
+  });
+
+  /**
+   * O mural e a origem dos links de /finbank/noticia. Um id do mural que nao
+   * resolve na rota do cenario 3 seria um link quebrado no app -- e o teste
+   * acima passaria, porque so olha o JSON.
+   */
+  it('todo comunicado do mural existe em /banco/noticia', async () => {
+    const mural = await api().get('/banco/comunicados').expect(200);
+
+    for (const comunicado of mural.body.comunicados) {
+      const noticia = await api().get(`/banco/noticia?id=${comunicado.id}`);
+      assert.equal(noticia.status, 200, `id=${comunicado.id}`);
+      assert.equal(noticia.body.noticia.titulo, comunicado.titulo);
+    }
+  });
+
+  it('as duas leituras nao carregam o campo detalhes em nenhum modo', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const cliente = await sessao.get('/banco/cliente/CLI001').expect(200);
+      const comunicados = await sessao.get('/banco/comunicados').expect(200);
+
+      assert.equal('detalhes' in cliente.body, false);
+      assert.equal('detalhes' in comunicados.body, false);
+      // O bloco `modo` pertence aos endpoints de cenario: ele existe para
+      // deixar claro que a rota leu o cookie. Estas leituras nao tem cenario,
+      // entao nao anunciam modo.
+      assert.equal('modo' in cliente.body, false);
+    }
+  });
+});
+
+/* ========================================================================== */
+/* T12 - Perfil: XSS armazenado (DAS v2.4, secao 8 e teste T11 do DAS)       */
+/* ========================================================================== */
+/*
+ * NUMERACAO. O DAS v2.4 llama este cenario de T11, mas o plano deste
+ * repositorio ja usava T11 para as leituras de apoio do autoatendimento
+ * (DAS v2.3, secao 4). Renumerar o plano inteiro nao traria nenhum ganho e
+ * quebraria a referencia cruzada com o material de apresentacao antigo, entao
+ * o bloco novo continua a sequencia e declara de onde veio. O mesmo vale para
+ * T13 a seguir (teste T12 do DAS).
+ *
+ * O QUE ESTE BLOCO PROVA, E O QUE NAO PROVA. Aqui nao existe navegador: o
+ * `innerHTML` do cenario esta em src/public/finbank/perfil.js, e o que a API
+ * entrega e a marcacao INTACTA nos dois modos -- por isso o payload volta
+ * igual em vuln e safe. A diferenca de comportamento fica a cargo do E2E
+ * (tests/e2e/estrutura.spec.js e tests/e2e/banco.spec.js). Aqui o que se prova e
+ * o contrato HTTP: o texto nao e escapado, o INSERT e parametrizado e a
+ * validacao de entrada funciona.
+ */
+
+describe('T12 - /banco/perfil: o XSS armazenado chega intacto ate a pagina', () => {
+it('o seed da tabela existe para o cliente da bancada de demonstracao', async () => {
+    const resposta = await api().get('/banco/perfil?id_cliente=CLI001').expect(200);
+
+    // O bloco `modo` existe nesta rota e nas de cenario, ao contrario das
+    // leituras de apoio (T11): o roteiro precisa que a resposta diga qual modo
+    // produziu o dado que sera renderizado.
+    assert.equal(resposta.body.modo, 'vuln');
+    assert.equal(resposta.body.perfil.id_cliente, 'CLI001');
+    assert.ok(resposta.body.perfil.id_perfil > 0);
+    assert.equal(typeof resposta.body.perfil.descricao_perfil, 'string');
+  });
+
+  it('a marcacao gravada volta intacta no modo vulneravel', async () => {
+    // Integreza e o ponto: o que o navegador vai receber para interpretar como
+    // HTML e exatamente o que foi salvo, byte a byte. Um `&amp;` aqui
+    // significaria que a neutralizacao aconteceu na API, e nao na saida da
+    // pagina -- que e onde o roteiro diz que ela acontece.
+    const sessao = supertest.agent(app);
+    await sessao.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    const gravado = await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: XSS })
+      .expect(201);
+
+    assert.equal(gravado.body.perfil.descricao_perfil, XSS);
+
+    const lido = await sessao.get('/banco/perfil?id_cliente=CLI001').expect(200);
+    assert.equal(lido.body.perfil.descricao_perfil, XSS);
+  });
+
+  it('a marcacao gravada volta intacta tambem no modo seguro', async () => {
+    // Contrapartida do teste acima: a marcacao NAO e escapada nem no safe. E o
+    // mesmo dado nos dois modos; quem decide o que acontece com ele e o
+    // renderizador da pagina.
+    const sessao = supertest.agent(app);
+    await sessao.post('/api/mode').send({ mode: 'safe' }).expect(200);
+
+    await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: XSS })
+      .expect(201);
+
+    const lido = await sessao.get('/banco/perfil?id_cliente=CLI001').expect(200);
+    assert.equal(lido.body.perfil.descricao_perfil, XSS);
+  });
+
+  it('o id_cliente vai como placeholder: um payload aqui nao injeta SQL', async () => {
+    // Diferenca em relacao ao cenario do ChefLab e a rota: aqui a entrada vai
+    // parametrizada nos DOIS modos. O payload de SQL classico no lugar do id
+    // simplesmente nao casa com nenhum registro.
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao
+        .get(`/banco/perfil?id_cliente=${comPayload("CLI001' OR '1'='1")}`)
+        .expect(404);
+
+      assert.equal(resposta.body.perfil, undefined);
+    }
+  });
+
+  it('um payload de UNION na tabela de perfis tambem nao altera a resposta', async () => {
+    for (const modo of ['vuln', 'safe']) {
+      const sessao = supertest.agent(app);
+      await sessao.post('/api/mode').send({ mode: modo }).expect(200);
+
+      const resposta = await sessao
+        .post('/banco/perfil')
+        .send({
+          id_cliente: "CLI001' UNION SELECT senha FROM administradores -- ",
+          descricao_perfil: 'teste',
+        })
+        .expect(400);
+
+      assert.equal(typeof resposta.body.erro, 'string');
+    }
+  });
+
+  it('a gravacao e um upsert: o mesmo cliente nao ganha dois registros', async () => {
+    const sessao = supertest.agent(app);
+    await sessao.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    const primeira = await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: 'primeira versao' })
+      .expect(201);
+
+    const segunda = await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: 'segunda versao' })
+      .expect(201);
+
+    assert.equal(segunda.body.perfil.id_perfil, primeira.body.perfil.id_perfil);
+
+    const [linhas] = await pool.query(
+      'SELECT COUNT(*) AS total FROM perfis_clientes WHERE id_cliente = ?',
+      ['CLI001'],
+    );
+    assert.equal(linhas[0].total, 1);
+  });
+
+  it('as validacoes de entrada da rota valem no mesmo contrato do laboratorio', async () => {
+    const sessao = supertest.agent(app);
+    await sessao.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    // Limite de 20 caracteres no id_cliente, o mesmo das rotas de banco.
+    await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'C'.repeat(21), descricao_perfil: 'ok' })
+      .expect(400);
+
+    // Limite de 2000 caracteres na descricao.
+    await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: 'x'.repeat(2001) })
+      .expect(400);
+
+    // Campo obrigatorio ausente.
+    await sessao.post('/banco/perfil').send({ id_cliente: 'CLI001' }).expect(400);
+
+    // GET sem o parametro obrigatorio.
+    await sessao.get('/banco/perfil').expect(400);
+  });
+
+  it('a descricao longa e o payload sao aceitos ate o limite, sem escaping', async () => {
+    const sessao = supertest.agent(app);
+    await sessao.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    const longa = 'a'.repeat(2000);
+    await sessao
+      .post('/banco/perfil')
+      .send({ id_cliente: 'CLI001', descricao_perfil: longa })
+      .expect(201);
+
+    const lido = await sessao.get('/banco/perfil?id_cliente=CLI001').expect(200);
+    assert.equal(lido.body.perfil.descricao_perfil, longa);
+  });
+});
+
+/* ========================================================================== */
+/* T13 - Cookie didatico (DAS v2.4, secao 9 e teste T12 do DAS)              */
+/* ========================================================================== */
+
+/**
+ * Le os cookies de uma resposta do supertest.
+ *
+ * `set-cookie` chega em `resposta.headers['set-cookie']` como lista. O que
+ * interessa aqui e o atributo, nao o valor: o ponto do cenario e que o MESMO
+ * nome de cookie aparece com `HttpOnly` em um modo e sem no outro.
+ */
+function atributosDoCookie(resposta, nome) {
+  const cabecalhos = resposta.headers['set-cookie'] ?? [];
+  const linha = cabecalhos.find((c) => c.startsWith(`${nome}=`));
+
+  assert.ok(linha, `cookie ${nome} ausente na resposta`);
+
+  return {
+    linha,
+    httpOnly: /;\s*HttpOnly/i.test(linha),
+    secure: /;\s*Secure/i.test(linha),
+    mesmoSite: /;\s*SameSite=([^;]+)/i.exec(linha)?.[1]?.toLowerCase() ?? null,
+  };
+}
+
+describe('T13 - lab_session e legivel no vuln e HttpOnly no safe', () => {
+  it('POST /api/mode emite os dois cookies com o valor sintetico da bancada', async () => {
+    const resposta = await api().post('/api/mode').send({ mode: 'vuln' }).expect(200);
+    const aluno = process.env.LAB_ALUNO_ID || 'aluno01';
+
+    assert.equal(resposta.body.modo, 'vuln');
+
+    const sessao = atributosDoCookie(resposta, 'lab_session');
+    assert.match(sessao.linha, new RegExp(`lab_session=sess-vuln-${aluno}`));
+    assert.match(sessao.linha, /Path=\//);
+    assert.match(sessao.linha, /Max-Age=43200/);
+
+    const modo = atributosDoCookie(resposta, 'lab_mode');
+    assert.match(modo.linha, /lab_mode=vuln/);
+  });
+
+  it('no modo vulneravel lab_session NAO tem HttpOnly e lab_mode tem', async () => {
+    // A assimetria e o cenario inteiro. Se os dois fossem HttpOnly no vuln, o
+    // `document.cookie` do aluno voltaria vazio e a demonstracao nao teria o
+    // que mostrar; se os dois fossem legiveis, o console do instrutor perderia
+    // o sinal de modo.
+    const resposta = await api().post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    assert.equal(atributosDoCookie(resposta, 'lab_session').httpOnly, false);
+    assert.equal(atributosDoCookie(resposta, 'lab_mode').httpOnly, true);
+  });
+
+  it('no modo seguro lab_session tem HttpOnly', async () => {
+    const resposta = await api().post('/api/mode').send({ mode: 'safe' }).expect(200);
+
+    assert.equal(atributosDoCookie(resposta, 'lab_session').httpOnly, true);
+    assert.match(
+      atributosDoCookie(resposta, 'lab_session').linha,
+      new RegExp(`sess-safe-${process.env.LAB_ALUNO_ID || 'aluno01'}`),
+    );
+  });
+
+  it('a troca de modo recria o cookie, e o valor acompanha o modo', async () => {
+    // Sem recriar, a demonstracao nao teria como mostrar a diferenca ao vivo: o
+    // cookie antigo continuaria valendo e o `document.cookie` do aluno nao
+    // mudaria ao clicar no botao do console.
+    const sessao = supertest.agent(app);
+
+    const vuln = await sessao.post('/api/mode').send({ mode: 'vuln' }).expect(200);
+    const seguro = await sessao.post('/api/mode').send({ mode: 'safe' }).expect(200);
+
+    assert.match(atributosDoCookie(vuln, 'lab_session').linha, /sess-vuln-/);
+    assert.match(atributosDoCookie(seguro, 'lab_session').linha, /sess-safe-/);
+  });
+
+  it('a resposta de /api/mode nao devolve o valor da sessao no JSON', async () => {
+    // O valor no corpo da resposta acabaria no console do instrutor, no devtools
+    // do aluno e em qualquer log de tela. O cookie continua indo por cabecalho.
+    const resposta = await api().post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    assert.equal('sessao' in resposta.body, false);
+    assert.equal('lab_session' in resposta.body, false);
+    assert.equal(/sess-(vuln|safe)-/.test(JSON.stringify(resposta.body)), false);
+  });
+
+  it('uma requisicao sem cookie recebe a sessao sintetica do modo corrente', async () => {
+    // O middleware cria a sessao na primeira requisicao da pagina. Sem isso, o
+    // aluno que abriu a aplicacao em uma aba antes de o instrutor trocar de modo
+    // ficaria sem lab_session -- e o `document.cookie` do cenario de cookie
+    // ficaria vazio sem explicacao.
+    const resposta = await api().get('/banco/cliente/CLI001').expect(200);
+    const sessao = atributosDoCookie(resposta, 'lab_session');
+
+    assert.equal(sessao.httpOnly, false, 'a sessao inicial nao pode ser HttpOnly no vuln');
+    assert.match(sessao.linha, /sess-vuln-/);
+  });
+
+  it('ambos os cookies seguem a politica de SameSite do laboratorio', async () => {
+    const resposta = await api().post('/api/mode').send({ mode: 'vuln' }).expect(200);
+
+    assert.equal(atributosDoCookie(resposta, 'lab_session').mesmoSite, 'lax');
+    assert.equal(atributosDoCookie(resposta, 'lab_mode').mesmoSite, 'lax');
+  });
+
+  it('o valor do cookie nunca concede acesso a servico real', async () => {
+    // O identificador e sintetico por construcao: `sess-<modo>-<bancada>`. A
+    // rota de perfil aceita qualquer id de cliente, entao um cookie nao
+    // autentica ninguem -- e o teste abaixo registra essa separacao.
+    const resposta = await api().post('/api/mode').send({ mode: 'vuln' }).expect(200);
+    const sessao = atributosDoCookie(resposta, 'lab_session');
+
+    assert.match(sessao.linha, /lab_session=sess-(vuln|safe)-[a-z0-9]+/);
+
+    // Um cliente inexistente nao existe por causa do cookie: e o parametro que
+    // decide, e o cookie nao entra na consulta.
+    const perfil = await api().get('/banco/perfil?id_cliente=CLI999').expect(404);
+    assert.equal(perfil.body.perfil, undefined);
+  });
+
+  it('a primeira pagina da aplicacao ja entrega o par de cookies', async () => {
+    // Verifica o caminho do middleware, e nao o da rota: sem `lab_session` no
+    // primeiro GET, o cenario de cookie comecaria a demonstracao com um estado
+    // que o aluno nao tem razao para atribuir a nada.
+    const resposta = await api().get('/finbank/perfil');
+    const cabecalhos = resposta.headers['set-cookie'] ?? [];
+
+    assert.ok(
+      cabecalhos.some((c) => c.startsWith('lab_session=')),
+      'a primeira requisicao nao emitiu lab_session',
+    );
+    assert.ok(
+      cabecalhos.some((c) => c.startsWith('lab_mode=')),
+      'a primeira requisicao nao emitiu lab_mode',
+    );
   });
 });

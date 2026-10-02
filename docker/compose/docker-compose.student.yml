@@ -1,0 +1,114 @@
+# =============================================================================
+# Stack de aluno na EC2 -- 13 instancias isoladas do mesmo laboratorio
+# =============================================================================
+# Este arquivo e o GEMO de `docker-compose.yml`, que continua sendo o compose de
+# DESENVOLVIMENTO (loopback, portas 3000 e 3306). Aqui as diferencas nao sao
+# cosmeticas, e cada uma delas existe por um motivo de isolamento:
+#
+#   1. Nao existe `container_name`. E o que permite subir treze stacks do mesmo
+#      projeto: com `container_name: lab-palestra-app` fixo, a segunda bancada
+#      morreria com "name already in use", porque o namespace de containers e
+#      global na maquina, e nao por projeto. O prefixo vem do
+#      COMPOSE_PROJECT_NAME que `scripts/iniciar_labs.sh` exporta.
+#
+#   2. O MySQL NAO e publicado. Nenhuma porta do banco chega ao host. A
+#      separacao entre alunos e feita pela rede Docker que cada projeto cria
+#      (`bancada_1_default`, `bancada_2_default`, ...): a aplicacao de uma
+#      bancada so alcanca o `db` da propria rede. Publicar 3306 em 0.0.0.0
+#      daria ao aluno da bancada 2 uma porta para tentar alcancar o banco da 1.
+#
+#   3. A aplicacao publica `0.0.0.0:${APP_PORT}:3000` em vez de
+#      `127.0.0.1:3000:3000`. No compose de dev o loopback e o isolamento; aqui
+#      o isolamento e a rede Docker, e o host precisa alcancar a porta para o
+#      aluno abrir o laboratorio no navegador.
+#
+# O `name:` do docker-compose.yml tambem esta ausente de proposito: quem nomeia
+# o projeto e o COMPOSE_PROJECT_NAME, e um `name:` fixo aqui faria as treze
+# bancadas disputarem o mesmo projeto -- e portanto o mesmo volume.
+#
+# Uso (preferencialmente pelo script, que cuida do laco e do nome):
+#   COMPOSE_PROJECT_NAME=bancada_1 APP_PORT=3001 LAB_ALUNO_ID=aluno01 \
+#     docker compose -f docker/compose/docker-compose.student.yml up --build -d
+#
+# ambiente academico isolado. Dados sinteticos. Nao publicar externamente.
+# =============================================================================
+
+services:
+  db:
+    image: mysql:8.0.46-bookworm
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-lab_root_password}
+      MYSQL_DATABASE: ${DB_NAME:-lab_palestra}
+      MYSQL_USER: ${DB_USER:-lab_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-lab_password}
+    # Nenhum `ports:` aqui, por nenhuma razao. O banco so existe dentro da rede
+    # do projeto. (Ver ponto 2 no cabecalho.)
+    volumes:
+      # O nome do volume NAO pode ser fixado. Sem `name:`, o Compose prefixa o
+      # volume com o COMPOSE_PROJECT_NAME e cada bancada ganha o seu
+      # (`bancada_1_db_data`); com um `name:` fixo, as treze bancadas passariam
+      # a dividir o mesmo diretorio de dados e o reset de uma apagaria a prova
+      # da outra. Ver a diferenca deliberada para o `name:` no compose de dev.
+      - db_data:/var/lib/mysql
+      - ../../database/00-grants.sql:/docker-entrypoint-initdb.d/00-grants.sql:ro
+      - ../../database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  app:
+    # O contexto de build sobe dois niveis: este arquivo vive em docker/compose.
+    build:
+      context: ../..
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      # 0.0.0.0 e obrigatorio aqui: o processo escuta no container, e o que
+      # chega ao host e a porta publicada acima.
+      HOST: ${HOST:-0.0.0.0}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-lab_user}
+      DB_PASSWORD: ${DB_PASSWORD:-lab_password}
+      DB_NAME: ${DB_NAME:-lab_palestra}
+      # Identidade da bancada, consumida pelo cookie sintetico `lab_session`
+      # (DAS v2.4, secao 9). `scripts/iniciar_labs.sh` exporta `aluno01`..
+      # `aluno13`; o valor e um rotulo de laboratorio e nao concede acesso a
+      # nada. Aparece em `document.cookie` na bancada do aluno: e o que permite
+      # a plateia conferir, no console, que o exemplo que rodou foi o da sua mesa.
+      LAB_ALUNO_ID: ${LAB_ALUNO_ID:-aluno01}
+      # `Secure` no cookie so faz sentido sob HTTPS (DAS v2.4, secao 9). A
+      # implantacao por portas roda em HTTP, entao o padrao e false; quem
+      # colocar TLS na frente da bancada liga isto explicitamente.
+      LAB_SECURE_COOKIES: ${LAB_SECURE_COOKIES:-false}
+    ports:
+      - "0.0.0.0:${APP_PORT:?APP_PORT nao definido - exporte APP_PORT ou use scripts/iniciar_labs.sh}:3000"
+    # Espelha o HEALTHCHECK do Dockerfile: quem sobe com `up` (imagem ja
+    # construida) recebe o mesmo sinal, e `docker compose ps` mostra o app como
+    # healthy em vez de apenas "running".
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

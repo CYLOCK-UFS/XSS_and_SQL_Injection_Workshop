@@ -1,7 +1,7 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0.46-4479A1?logo=mysql&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-58%20unit%20%2B%2017%20E2E-6e5494)
+![Testes](https://img.shields.io/badge/testes-67%20unit%20%2B%2096%20E2E-6e5494)
 
 # FinBank & ChefLab
 
@@ -18,9 +18,11 @@ e um **seguro**.
 ## Sumário
 
 - [Início rápido](#início-rápido)
+- [As telas](#as-telas)
 - [Ficha técnica](#ficha-técnica)
 - [Modo vulnerável e modo seguro](#modo-vulnerável-e-modo-seguro)
-- [Os quatro cenários](#os-quatro-cenários)
+- [Os sete cenários](#os-sete-cenários)
+- [Console do instrutor](#console-do-instrutor)
 - [Notas de implementação](#notas-de-implementação)
 - [Roteiro de apresentação](#roteiro-de-apresentação)
 - [API de laboratório](#api-de-laboratório)
@@ -43,6 +45,32 @@ docker compose up --build
 
 Base `lab_palestra`. Para derrubar: `docker compose down`. Para apagar **também**
 o volume do banco e recomeçar do zero: `docker compose down -v`.
+
+## As telas
+
+A raiz `/` é o **lançador** da oficina: escolhe o aplicativo e o modo. Nenhuma
+tela de aluno carrega explicação didática — quem ensina usa o console.
+
+| URL | Tela | Quem abre |
+| --- | --- | --- |
+| `/` | lançador da oficina | instrutor, antes de começar |
+| `/finbank` | autoatendimento: saldo, atalhos, comunicados | aluno |
+| `/finbank/agencias` | busca por cidade — **cenário 1** | aluno |
+| `/finbank/extrato` | extrato da conta — **cenário 2** | aluno |
+| `/finbank/comunicados` | mural de avisos | aluno |
+| `/finbank/noticia` | consulta por número — **cenário 3** | aluno |
+| `/cheflab` | portal de receitas | aluno |
+| `/cheflab/receita` | receita com comentários — **cenário 4** | aluno |
+| `/finbank/perfil` | perfil do cliente — **cenários 5 a 7** | aluno |
+| `/palco` | **console do instrutor**: roteiro, payloads, inspetor, mitigações | instrutor |
+
+Os caminhos antigos (`/banco/agencias.html`, `/banco/extrato.html`,
+`/banco/noticia.html`, `/receitas/receitas.html`) continuam funcionando como
+alias, para não quebrar material já publicado.
+
+Um caminho de app inexistente devolve o **404 do próprio aplicativo**
+(`/finbank/…` e `/cheflab/…`), e não o JSON de API: a negociação é pelo header
+`Accept`. As rotas `/banco/*` continuam sendo JSON para qualquer cliente.
 
 <details>
 <summary><strong>Desenvolvimento local (sem o container da aplicação)</strong></summary>
@@ -112,13 +140,14 @@ MySQL 8.0  (127.0.0.1:3306)
 
 | # | Página | Vulnerabilidade | Entrada |
 | --- | --- | --- | --- |
-| 1 | `/banco/agencias.html` | SQLi UNION | `GET cidade` |
-| 2 | `/banco/extrato.html` | SQLi baseada em erro | `GET id_conta` |
-| 3 | `/banco/noticia.html` | SQLi inferencial (cega) | `GET id` |
-| 4 | `/receitas/receitas.html` | XSS armazenado | `POST comentario` |
+| 1 | `/finbank/agencias` | SQLi UNION | `GET cidade` |
+| 2 | `/finbank/extrato` | SQLi baseada em erro | `GET id_conta` |
+| 3 | `/finbank/noticia` | SQLi inferencial (cega) | `GET id` |
+| 4 | `/cheflab/receita` | XSS armazenado | `POST comentario` |
 
-Cada página mostra o resultado **e** a resposta JSON bruta — é no JSON que o
-aluno enxerga as linhas extras do UNION e o `~abcde` vazar.
+Cada tela mostra o resultado **e** a resposta JSON bruta, num `<details>` no fim
+da página — é no JSON que o aluno enxerga as linhas extras do UNION e o `~abcde`
+vazar.
 
 ### Cenário 1 — UNION
 
@@ -148,8 +177,8 @@ exatamente 4 colunas.
 > [!TIP]
 > O espaço final depois de `--` é obrigatório. É por isso que o DAS escreve
 > `--%20`: sem ele o MySQL não reconhece o comentário. Na query string o payload
-> precisa estar URL-encoded — na interface use o botão **Usar no campo**, que já
-> faz a codificação.
+> precisa estar URL-encoded — mas quem conduz não digita isso: o botão **copiar**
+> do console, em `/palco`, já entrega o payload com a forma certa.
 
 ### Cenário 3 — cega (oráculo booleano)
 
@@ -182,14 +211,39 @@ Payload:
 
 O `INSERT` em `src/repositories/receitasRepository.js` é **parametrizado nos dois
 modos** — a marcação é gravada exatamente como digitada. A diferença está inteira
-na **saída**, em `src/public/receitas/receitas.js`:
+na **saída**, em `src/public/cheflab/receita.js`:
 
 - **vuln** → `renderizarComInnerHTML()`, que monta o item com `innerHTML`.
   O `onerror` dispara a cada visita, sem nova interação — daí "armazenado".
 - **safe** → `renderizarComTextContent()`, que monta nós de texto. A mesma
   marcação aparece como texto literal. Não existe `innerHTML` nesse caminho.
 
-Ative o payload com o botão **Usar no campo** e recarregue a página.
+O payload é colado no formulário da própria página; recarregue para ver o
+`alert` disparar de novo sem clicar em nada.
+
+---
+
+## Console do instrutor
+
+`/palco` concentra tudo que **não pode** estar na tela da plateia: o roteiro dos
+quatro cenários, os payloads prontos com botão de copiar, um inspetor de GET
+(status + corpo) e o estado do banco.
+
+| Painel | Para que serve |
+| --- | --- |
+| Sessão | modo `vuln`/`safe`, **Restaurar** e saúde do banco (`/api/health`) |
+| Roteiro | passos numerados do cenário selecionado; crases viram `<code>` |
+| Payloads | o que colar, em qual campo, e o que esperar de cada resposta |
+| Inspetor | sonda a rota do cenário e mostra `HTTP status` + corpo cru |
+
+Trocar de cenário troca também o alvo do inspetor, porque cada cenário ataca
+uma rota e um parâmetro diferentes. Alternar o modo aqui **não recarrega** a
+página: o roteiro selecionado sobrevive à troca, o que importa quando se está no
+meio da demonstração.
+
+> [!NOTE]
+> Nenhuma tela de aluno explica o ataque. O gabarito no console é o que separa
+> "estou vendo o site" de "estou vendo a ferramenta".
 
 ---
 
@@ -286,13 +340,34 @@ ou na query string. Não há `secure: true` porque o laboratório roda em
 `/api/reset`. O reset restaura os dois comentários originais **e** todos os
 registros-base das demais tabelas, não só os comentários.
 
+### API dos aplicativos
+
+`/banco/*` é a API dos cenários — vulnerável no modo `vuln`, parametrizada no
+modo `safe`:
+
+| Rota | Efeito |
+| --- | --- |
+| `GET /banco/agencias?cidade=` | **cenário 1** |
+| `GET /banco/extrato?id_conta=` | **cenário 2** |
+| `GET /banco/noticia?id=` | **cenário 3** |
+| `GET /banco/comunicados` | mural do autoatendimento — sempre parametrizada |
+| `GET /banco/cliente/:id` | conta do cabeçalho — sempre parametrizada |
+| `POST /receitas` | grava comentário — parametrizado nos dois modos |
+| `GET /receitas` | lista comentários da receita |
+
+As duas últimas rotas **não têm versão vulnerável**: elas existem para o FinBank
+parecer um banco, e um endpoint de apoio que aceita concatenação seria um quinto
+cenário que ninguém pediu. O bloco **T11** da suíte de aceite existe para travar
+essa decisão.
+
 ## Testes
 
 O plano de aceite **T01–T09 do DAS** está implementado em
-`tests/acceptance.test.js` (`node:test` + `supertest`), junto do bloco **T10**,
-que não vem do DAS: são invariantes do próprio laboratório (reset serializado,
-corrida entre reset e leitura, parâmetros de query lidos como texto) sem as
-quais uma demonstração ao vivo quebra sem ninguém ter feito nada de errado.
+`tests/acceptance.test.js` (`node:test` + `supertest`), junto dos blocos **T10**
+e **T11**, que não vêm do DAS: são invariantes do próprio laboratório (reset
+serializado, corrida entre reset e leitura, parâmetros de query lidos como texto,
+leituras de apoio sempre parametrizadas) sem as quais uma demonstração ao vivo
+quebra sem ninguém ter feito nada de errado.
 
 ```bash
 docker compose up -d db   # os testes rodam no host, não no container
@@ -307,8 +382,8 @@ arquivo apagaria os dados que o outro está usando.
 
 | Comando | O que cobre | Precisa de MySQL |
 | --- | --- | --- |
-| `npm test` | 58 testes: aceite T01–T09 do DAS + T10, unidade dos repositories, encaminhamento de erro | sim |
-| `npm run test:e2e` | 17 testes: XSS **executando** no navegador, oráculo SQLi, extração caractere a caractere | sim |
+| `npm test` | 67 testes: aceite T01–T09 do DAS + T10/T11, unidade dos repositories, encaminhamento de erro | sim |
+| `npm run test:e2e` | 96 testes: XSS **executando**, oráculo SQLi, telas e URLs da oficina, console do instrutor, geometria da interface | sim |
 | `npm run typecheck` | `tsc --checkJs` sobre os `.js`, sem emitir nada | não |
 
 Para rodar as três de uma vez, na ordem certa e subindo o banco se ele ainda não
@@ -327,10 +402,22 @@ só evita ter que lembrar da ordem `docker compose up -d db` → `npm test` →
 `npm run test:e2e`.
 
 O E2E é a única camada que prova que o payload **chega a rodar**: a suíte de
-aceite confere que o `innerHTML` continua no fonte, o que é condição necessária
+aceitação confere que o `innerHTML` continua no fonte, o que é condição necessária
 e não suficiente — um `Content-Security-Policy` novo, ou um `innerHTML` que
 deixasse de interpolar o comentário, passariam por ela e quebrariam a
 demonstração ao vivo.
+
+`layout.spec.js` cobre uma terceira coisa que nenhuma das outras duas vê: onde os
+elementes **estão**. A suíte inteira passou verde com as sete telas de app sem
+nenhum cabeçalho grudado, porque `position: relative` no lugar de `sticky`
+responde 200, traz o texto certo e só falha quando alguém rola a página — aí a
+faixa que mostra o modo, que é a única leitura do modo fora do app, some da tela.
+Ele também trava o estouro horizontal: 348px de ações dentro de 350px úteis
+davam 156px de rolagem lateral a 390px de largura, e nenhuma verificação de
+conteúdo nota uma página que desliza para o lado. As medições são geométricas
+(`position`, `scrollWidth`, alturas) e não `toHaveScreenshot`, porque snapshot de
+fonte vira falso-negativo na máquina de quem roda em vez de apontar o código.
+
 
 Duas decisões do `playwright.config.js` que só apareceram por causa de
 problemas reais:
@@ -345,7 +432,7 @@ problemas reais:
   a ausência do Chromium empacotado e cai para `msedge`/`chrome`.
 
 ```bash
-npm run test:e2e                     # 17 testes
+npm run test:e2e                     # 96 testes
 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e   # fixa o navegador do sistema
 ```
 
@@ -370,14 +457,27 @@ src/middleware/mode.js         contrato do cookie lab_mode
 src/middleware/errorHandler.js erro didático (vuln) x genérico (safe)
 src/routes/                    bancoRoutes, receitasRoutes, labRoutes
 src/repositories/              SQL: interpolado (vuln) x parametrizado (safe)
-src/public/banco/              cenários 1 a 3
-src/public/receitas/           cenário 4 (sink XSS)
-src/public/css/lab.css         CSS próprio, sem CDN — o lab roda offline
-src/public/js/lab.js           modo, reset, roteiros clicáveis
+src/public/index.html          lançador da oficina
+src/public/palco.html          console do instrutor
+src/public/finbank/            telas do autoatendimento (cenários 1 a 3)
+src/public/cheflab/            telas do portal de receitas (cenário 4, sink XSS)
+src/public/css/base.css        reset, tokens, utilitários
+src/public/css/lab.css         chrome do laboratório, escopado fora dos apps
+src/public/css/finbank.css     identidade azul do banco
+src/public/css/cheflab.css     identidade terracota do portal
+src/public/js/lab.js           contrato de modo, reset, datas, helpers de texto
+src/public/js/chrome.js        barra fina e controle segmentado de modo
+src/public/js/finbank.js       cabeçalho e conta logada
+src/public/js/palco.js         roteiro, payloads e inspetor
+src/public/cheflab/receita.js  renderizadores vulnerável (innerHTML) e seguro
 src/types/                     .d.ts de apoio ao `tsc --checkJs` (não emitem nada)
-tests/acceptance.test.js       T01–T10, `node:test` + supertest
+tests/acceptance.test.js       T01–T11, `node:test` + supertest
 tests/unit/                    repositories com executor falso; erro assíncrono
-tests/e2e/                     Playwright: XSS executando e oráculo SQLi
+tests/e2e/banco.spec.js        os três cenários de SQLi no navegador
+tests/e2e/cheflab.spec.js      XSS executando, nos dois sinks e nos dois modos
+tests/e2e/estrutura.spec.js    telas, URLs, barra e console do instrutor
+tests/e2e/layout.spec.js       posição dos cabeçalhos e estouro de largura
+tests/e2e/smoke.spec.js        navegador sobe e o inventário de URLs responde
 tsconfig.json                  checkJs, noEmit
 playwright.config.js           porta 3100; browser do sistema como reserva
 DAS_v2_2_Revisado_FinBank_ChefLab.txt   documento de análise e especificação

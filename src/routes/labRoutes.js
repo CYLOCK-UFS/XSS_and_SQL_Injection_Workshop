@@ -6,9 +6,11 @@ import {
 } from '../config/database.js';
 import {
   DEFAULT_LAB_MODE,
+  LAB_ALUNO_ID,
   isValidLabMode,
   normalizeLabMode,
   setLabModeCookie,
+  setLabSessionCookie,
 } from '../middleware/mode.js';
 
 const router = Router();
@@ -25,12 +27,29 @@ router.get('/mode', (req, res) => {
  * POST /api/mode  { "mode": "vuln" | "safe" }
  * Responde com Set-Cookie. Valor ausente ou invalido segue a regra unica do
  * laboratorio: assume vuln e devolve o modo efetivo.
+ *
+ * Emite DOIS cookies (DAS v2.4, secao 9), e o roteiro depende de irem juntos
+ * na mesma resposta:
+ *
+ *   lab_mode     httpOnly: true  SEMPRE
+ *   lab_session  httpOnly: false em vuln, true em safe
+ *
+ * Eles sao a mesma demonstracao em dois sentidos: em `safe`, o `document.cookie`
+ * passa a mostrar SO o `lab_mode` -- e o nome dele fica ali justamente para
+ * provar que a string nao ficou vazia por acidente, mas porque os cookies
+ * HttpOnly nao voltam para o script. Um console vazio ensinaria a coisa errada.
+ *
+ * O corpo da resposta NAO devolve o valor da sessao, em nenhum dos modos.
+ * Devolver seria mostrar a sessao pelo outro caminho no modo seguro, e o
+ * aluno nao conseguiria dizer se o que sumiu foi a cookie ou o corpo da
+ * resposta. A diferenca precisa estar em um lugar so: `document.cookie`.
  */
 router.post('/mode', (req, res) => {
   const solicitado = req.body ? req.body.mode : undefined;
   const mode = normalizeLabMode(solicitado);
 
   setLabModeCookie(res, mode);
+  setLabSessionCookie(res, mode);
 
   res.json({
     mode,
@@ -66,6 +85,19 @@ router.post('/reset', resetLab);
  * `condition: service_healthy` do compose so conseguem reagir a um `ok`.
  * O erro vai para o log e a resposta carrega `ok: false` com 503, que e o
  * codigo que o Docker espera para marcar o container como unhealthy.
+ *
+ * `aluno` e a identidade da bancada (LAB_ALUNO_ID), e responde a exigencia do
+ * DAS v2.4 secao 16.3: o console do instrutor precisa deixar explicito qual
+ * laboratorio esta sendo controlado. Na implantacao por portas, sao treze
+ * stacks independentes e um reset no lugar errado estraga a demonstracao de uma
+ * mesa que nao e a do instrutor. E por isso que o campo vem do MESMO valor que
+ * monta o cookie `lab_session` -- o que o console mostra na tela e o que o
+ * aluno ve no `document.cookie` da propria bancada.
+ *
+ * `origem` nao entra aqui: o servidor nao sabe por qual URL publica o aluno
+ * chegou, e um valor inventado seria pior do que a ausencia dele. Quem mostra a
+ * URL completa ao instrutor e o console, que le `location.origin` do lado do
+ * navegador.
  */
 router.get('/health', async (req, res) => {
   try {
@@ -73,6 +105,7 @@ router.get('/health', async (req, res) => {
     res.json({
       ok: true,
       mode: req.labMode,
+      aluno: LAB_ALUNO_ID,
       banco: dbConfig.database,
       tabelas,
     });
@@ -81,6 +114,7 @@ router.get('/health', async (req, res) => {
     res.status(503).json({
       ok: false,
       mode: req.labMode,
+      aluno: LAB_ALUNO_ID,
       banco: dbConfig.database,
       erro: 'Banco de dados indisponivel.',
     });
